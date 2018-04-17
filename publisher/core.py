@@ -20,6 +20,7 @@ class AccidentRetriever:
         self.connection = self.setup_connection()
         self.channel = self.connection.channel()
         self.channel.exchange_declare(exchange=self.exchange_name(), exchange_type='topic')
+        atexit.register(self.close_connection, self)
 
     def setup_connection(self):
         config = configparser.ConfigParser()
@@ -59,7 +60,6 @@ class AccidentRetriever:
 
         return config[self.MQ_SECTION][self.MQ_EXCHANGE]
 
-    @atexit.register
     def close_connection(self):
         self.connection.close()
 
