@@ -69,6 +69,7 @@ class AccidentPayload:
 
     def to_dict(self):
         return {
+            'utc_timestamp': datetime.utcnow().timestamp(),
             'boundary': self.boundary.to_dict(),
             'accident': self.location.to_dict()
         }
