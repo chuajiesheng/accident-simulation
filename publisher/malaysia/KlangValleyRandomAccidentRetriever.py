@@ -13,14 +13,10 @@ class KlangValleyRandomAccidentRetrieve(RandomAccidentRetrieve):
 
     @staticmethod
     def publish(payload):
-        channel = self.connection.channel()
-        channel.exchange_declare(exchange=self.exchange_name(), exchange_type='topic')
-
         routing_key = 'malaysia.klang_valley'
         message = json.dumps(payload.to_dict())
-        channel.basic_publish(exchange='accidents', routing_key=routing_key, body=message)
+        self.channel.basic_publish(exchange='accidents', routing_key=routing_key, body=message)
         print(" [x] Sent %r:%r" % (routing_key, message))
-        connection.close()
 
 
 if __name__ == "__main__":
