@@ -22,16 +22,6 @@ class RandomAccidentRetrieve(AccidentRetriever):
         self.r = random.Random(42)
 
     def watch(self):
-        if self.boundary.top > self.boundary.bottom:
-            lat = random.uniform(self.boundary.bottom, self.boundary.top)
-        else:
-            lat = random.uniform(self.boundary.top, self.boundary.bottom)
-
-        if self.boundary.left > self.boundary.right:
-            long = random.uniform(self.boundary.right, self.boundary.left)
-        else:
-            long = random.uniform(self.boundary.left, self.boundary.right)
-
         while True:
             lat = self.boundary.bottom + self.r.random() * (self.boundary.top - self.boundary.bottom)
             long = self.boundary.left + self.r.random() * (self.boundary.right - self.boundary.left)
