@@ -11,8 +11,7 @@ class KlangValleyRandomAccidentRetrieve(RandomAccidentRetrieve):
         interval = 5
         super(KlangValleyRandomAccidentRetrieve, self).__init__(boundary, interval)
 
-    @staticmethod
-    def publish(payload):
+    def publish(self, payload):
         routing_key = 'malaysia.klang_valley'
         message = json.dumps(payload.to_dict())
         self.channel.basic_publish(exchange='accidents', routing_key=routing_key, body=message)

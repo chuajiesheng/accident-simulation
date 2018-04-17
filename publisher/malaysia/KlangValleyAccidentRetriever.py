@@ -60,8 +60,7 @@ class KlangValleyAccidentRetriever(AccidentRetriever):
             self.publish(AccidentPayload(self.boundary, AccidentLocation(lat, long)))
             time.sleep(self.interval)
 
-    @staticmethod
-    def publish(payload):
+    def publish(self, payload):
         routing_key = 'malaysia.klang_valley'
         message = json.dumps(payload.to_dict())
         self.channel.basic_publish(exchange='accidents', routing_key=routing_key, body=message)
