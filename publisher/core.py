@@ -2,12 +2,60 @@ import random
 import time
 import json
 from datetime import datetime
+import configparser
+import pika
 
 
 class AccidentRetriever:
+    MQ_SECTION  = 'RabbitMQ'
+    MQ_SERVER = 'server'
+    MQ_USERNAME = 'username'
+    MQ_PASSWORD = 'password'
+    MQ_EXCHANGE = 'exchange'
+
     def __init__(self, boundary, interval):
         self.boundary = boundary
         self.interval = interval
+        self.connection = self.setup_connection()
+
+    def setup_connection(self):
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+
+        if self.MQ_SECTION not in config.sections():
+            raise MissingConfigurationError('Missing {} section'.format(self.MQ_SECTION))
+
+        keys = [key for key in config[self.MQ_SECTION]]
+        if self.MQ_SERVER not in keys:
+            raise MissingConfigurationError('Missing {} key'.format(self.MQ_SERVER))
+
+        if self.MQ_USERNAME not in keys:
+            raise MissingConfigurationError('Missing {} key'.format(self.MQ_USERNAME))
+
+        if self.MQ_PASSWORD not in keys:
+            raise MissingConfigurationError('Missing {} key'.format(self.MQ_PASSWORD))
+
+        server = config[self.MQ_SECTION][self.MQ_SERVER]
+        username = config[self.MQ_SECTION][self.MQ_USERNAME]
+        password = config[self.MQ_SECTION][self.MQ_PASSWORD]
+
+        credentials = pika.PlainCredentials(username, password)
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host=server, credentials=credentials))
+
+        return connection
+
+    def exchange_name(self):
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+
+        if self.MQ_SECTION not in config.sections():
+            raise MissingConfigurationError('Missing {} section'.format(self.MQ_SECTION))
+
+        if self.MQ_EXCHANGE not in config[self.MQ_SECTION].keys():
+            raise MissingConfigurationError('Missing {} key'.format(self.MQ_EXCHANGE))
+
+        return config[self.MQ_SECTION][self.MQ_EXCHANGE]
+
 
     def watch(self):
         raise NotImplementedError
@@ -74,6 +122,10 @@ class AccidentPayload:
             'boundary': self.boundary.to_dict(),
             'accident': self.location.to_dict()
         }
+
+
+class MissingConfigurationError(Exception):
+    pass
 
 
 class ServiceError(Exception):

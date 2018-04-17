@@ -62,10 +62,8 @@ class KlangValleyAccidentRetriever(AccidentRetriever):
 
     @staticmethod
     def publish(payload):
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
-        channel = connection.channel()
-
-        channel.exchange_declare(exchange='accidents', exchange_type='topic')
+        channel = self.connection.channel()
+        channel.exchange_declare(exchange=self.exchange_name(), exchange_type='topic')
 
         routing_key = 'malaysia.klang_valley'
         message = json.dumps(payload.to_dict())
