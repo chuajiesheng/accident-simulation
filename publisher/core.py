@@ -17,10 +17,17 @@ class AccidentRetriever:
     def __init__(self, boundary, interval):
         self.boundary = boundary
         self.interval = interval
-        self.connection = self.setup_connection()
+
+        connection = self.setup_connection()
+
+        self.connection = connection
         self.channel = self.connection.channel()
         self.channel.exchange_declare(exchange=self.exchange_name(), exchange_type='topic')
-        atexit.register(self.close_connection, self)
+
+        def close_connection():
+            connection.close()
+
+        atexit.register(close_connection)
 
     def setup_connection(self):
         config = configparser.ConfigParser()
@@ -59,9 +66,6 @@ class AccidentRetriever:
             raise MissingConfigurationError('Missing {} key'.format(self.MQ_EXCHANGE))
 
         return config[self.MQ_SECTION][self.MQ_EXCHANGE]
-
-    def close_connection(self):
-        self.connection.close()
 
     def watch(self):
         raise NotImplementedError
