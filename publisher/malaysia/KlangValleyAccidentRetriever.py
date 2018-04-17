@@ -1,4 +1,4 @@
-from publisher.core import RandomAccidentRetrieve, AccidentRetriever, ServiceError, ServicePayloadError, Boundary
+from publisher.core import RandomAccidentRetrieve, AccidentRetriever, ServiceError, ServicePayloadError, Boundary, AccidentPayload, AccidentLocation
 import time
 import requests
 import pika
@@ -8,9 +8,12 @@ import json
 class KlangValleyAccidentRetriever(AccidentRetriever):
     TEN_MINUTES = 1000 * 60 * 10
     EIGHT_HOURS = 1000 * 60 * 60 * 8
+    TO_MS = 1000
 
     def __init__(self):
-        super().__init__(self)
+        boundary = Boundary(100.711638, 3.870733, 101.970674, 2.533530)
+        interval = 60 * 10
+        super(KlangValleyAccidentRetriever, self).__init__(boundary, interval)
 
     @staticmethod
     def get_alerts():
@@ -41,27 +44,31 @@ class KlangValleyAccidentRetriever(AccidentRetriever):
         return payload['alerts']
 
     def watch(self):
-        alerts = self.get_alerts()
-        print('{} alerts'.format(len(alerts)))
+        while True:
+            alerts = self.get_alerts()
+            map(self.handle_alert, alerts)
 
-        for alert in alerts:
-            alert_time_millis = alert['pubMillis']
-            now_millis = int(round(time.time() * 1000)) + self.EIGHT_HOURS
-            delta_millis = now_millis - alert_time_millis
-            self.publish(alert)
+    def handle_alert(self, alert):
+        alert_time_millis = alert['pubMillis']
+        now_millis = int(round(time.time() * self.TO_MS)) + self.EIGHT_HOURS
+        delta_millis = now_millis - alert_time_millis
 
-            if alert['type'] == 'ACCIDENT' and delta_millis < self.TEN_MINUTES:
-                pass
+        lat = alert['location']['y']
+        long = alert['location']['x']
+
+        if alert['type'] == 'ACCIDENT' and delta_millis < (self.interval * self.TO_MS):
+            self.publish(AccidentPayload(self.boundary, AccidentLocation(lat, long)))
+            time.sleep(self.interval)
 
     @staticmethod
-    def publish(alert):
+    def publish(payload):
         connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
         channel = connection.channel()
 
         channel.exchange_declare(exchange='accidents', exchange_type='topic')
 
         routing_key = 'malaysia.klang_valley'
-        message = json.dumps(alert)
+        message = json.dumps(payload.to_dict())
         channel.basic_publish(exchange='accidents', routing_key=routing_key, body=message)
         print(" [x] Sent %r:%r" % (routing_key, message))
         connection.close()
@@ -88,6 +95,6 @@ class KlangValleyRandomAccidentRetrieve(RandomAccidentRetrieve):
 
 
 if __name__ == "__main__":
-    retriever = KlangValleyRandomAccidentRetrieve()
+    retriever = KlangValleyAccidentRetriever()
     retriever.watch()
 

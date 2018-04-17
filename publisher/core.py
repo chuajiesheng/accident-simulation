@@ -1,11 +1,13 @@
 import random
 import time
 import json
+from datetime import datetime
 
 
 class AccidentRetriever:
-    def __init__(self):
-        pass
+    def __init__(self, boundary, interval):
+        self.boundary = boundary
+        self.interval = interval
 
     def watch(self):
         raise NotImplementedError
@@ -17,9 +19,8 @@ class AccidentRetriever:
 
 class RandomAccidentRetrieve(AccidentRetriever):
     def __init__(self, boundary, interval):
-        self.boundary = boundary
-        self.interval = interval
         self.r = random.Random(42)
+        super(RandomAccidentRetrieve, self).__init__(boundary, interval)
 
     def watch(self):
         while True:
