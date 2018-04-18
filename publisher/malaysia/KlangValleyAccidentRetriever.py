@@ -65,7 +65,6 @@ class KlangValleyAccidentRetriever(AccidentRetriever):
         message = json.dumps(payload.to_dict())
         self.channel.basic_publish(exchange='accidents', routing_key=routing_key, body=message)
         print(" [x] Sent %r:%r" % (routing_key, message))
-        connection.close()
 
 
 if __name__ == "__main__":
