@@ -12,7 +12,8 @@ class Master:
         signal.signal(signal.SIGINT, self.exit)
         signal.signal(signal.SIGTERM, self.exit)
 
-        self.deployment_manager = multiprocessing.Process(target=self.start_deployment, args=(['malaysia.klang_valley'],))
+        self.deployment_manager = multiprocessing.Process(target=self.start_deployment,
+                                                          args=(['malaysia.klang_valley'],))
         self.deployment_manager.start()
 
     def exit(self):
