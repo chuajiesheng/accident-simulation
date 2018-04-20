@@ -1,20 +1,61 @@
 import threading
 import time
 import queue
+import uuid
+import pika
+import json
+import functools
 
 from mq import RabbitMQ
 from base import setup_logging
+from gamemaster import core
 
 
 class Master:
+    assessor_group = None
+
     def __init__(self):
         self.logger = setup_logging('Master')
         self.message_queue = queue.Queue()
         self.deployment_manager = DeploymentMaster(self.message_queue)
         self.logger.debug('initiated')
 
+    def request_assessor_group_rpc(self, payload):
+        connection = RabbitMQ.setup_connection()
+        channel = connection.channel()
+
+        result = channel.queue_declare(exclusive=True)
+        callback_queue = result.method.queue
+
+        corr_id = str(uuid.uuid4())
+
+        def on_response(parent, correlation_id, ch, method, props, body):
+            if correlation_id== props.correlation_id:
+                parent.assessor_group = body
+                parent.logger.debug('on_response, response=%r', body)
+
+        channel.basic_consume(functools.partial(on_response, self, corr_id), no_ack=True, queue=callback_queue)
+        channel.basic_publish(exchange='',
+                              routing_key=core.GameMaster.QUEUE_NAME,
+                              properties=pika.BasicProperties(reply_to=callback_queue,
+                                                              correlation_id=corr_id),
+                              body=json.dumps(payload))
+
+        self.logger.debug('waiting to process event')
+        while self.assessor_group is None:
+            connection.process_data_events()
+
+        self.logger.debug('response=%r', self.assessor_group)
+        return self.assessor_group
+
     def start(self):
-        self.logger.debug('starting')
+        self.logger.debug('request accessor group')
+        self.request_assessor_group_rpc({
+            'groupId': str(uuid.uuid4()),
+            'assessors': 5
+        })
+
+        self.logger.debug('starting deployment manager')
         self.deployment_manager.start()
 
         try:
