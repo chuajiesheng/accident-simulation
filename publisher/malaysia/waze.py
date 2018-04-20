@@ -52,6 +52,9 @@ class KlangValleyAccidentRetriever(AccidentRetriever):
                 alerts = self.get_alerts()
                 self.logger.debug("alerts count=%s", len(alerts))
                 map(self.handle_alert, alerts)
+
+                self.logger.debug('Sleep secs=%s', self.interval)
+                time.sleep(self.interval)
         except KeyboardInterrupt:
             self.logger.debug('KeyboardInterrupt')
 
@@ -65,7 +68,6 @@ class KlangValleyAccidentRetriever(AccidentRetriever):
 
         if alert['type'] == 'ACCIDENT' and delta_millis < (self.interval * self.TO_MS):
             self.publish(AccidentPayload(self.boundary, AccidentLocation(lat, long)))
-            time.sleep(self.interval)
 
     def publish(self, payload):
         routing_key = 'malaysia.klang_valley'
