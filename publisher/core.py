@@ -18,7 +18,7 @@ class AccidentRetriever:
 
         self.connection = connection
         self.channel = self.connection.channel()
-        self.channel.exchange_declare(exchange=RabbitMQ.exchange_name(), exchange_type='topic')
+        self.channel.exchange_declare(exchange=RabbitMQ.accident_exchange_name(), exchange_type='topic')
 
         def close_connection():
             self.logger.debug('Closing connection')

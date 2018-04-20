@@ -38,7 +38,7 @@ class RabbitMQ:
         return connection
 
     @staticmethod
-    def exchange_name():
+    def accident_exchange_name():
         config = configparser.ConfigParser()
         config.read('config.ini')
 

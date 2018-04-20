@@ -58,14 +58,14 @@ class DeploymentMaster(StoppableThread):
     def consume(self):
         connection = RabbitMQ.setup_connection()
         channel = connection.channel()
-        channel.exchange_declare(exchange=RabbitMQ.exchange_name(), exchange_type='topic')
+        channel.exchange_declare(exchange=RabbitMQ.accident_exchange_name(), exchange_type='topic')
 
         result = channel.queue_declare(exclusive=True)
         queue_name = result.method.queue
 
         binding_keys = ['malaysia.klang_valley']
         for binding_key in binding_keys:
-            channel.queue_bind(exchange=RabbitMQ.exchange_name(), queue=queue_name, routing_key=binding_key)
+            channel.queue_bind(exchange=RabbitMQ.accident_exchange_name(), queue=queue_name, routing_key=binding_key)
 
         self.logger.debug('binding to RabbitMQ')
 
@@ -79,7 +79,6 @@ class DeploymentMaster(StoppableThread):
         if self.stopped():
             channel.stop_consuming()
             self.logger.debug('stop consuming')
-
 
 if __name__ == "__main__":
     m = Master()
