@@ -3,7 +3,7 @@ import time
 import queue
 
 from mq import RabbitMQ
-from core import setup_logging
+from base import setup_logging
 
 
 class Master:
@@ -79,6 +79,7 @@ class DeploymentMaster(StoppableThread):
         if self.stopped():
             channel.stop_consuming()
             self.logger.debug('stop consuming')
+
 
 if __name__ == "__main__":
     m = Master()

@@ -4,7 +4,7 @@ from datetime import datetime
 import atexit
 
 from mq import RabbitMQ
-from core import setup_logging
+from base import setup_logging
 
 
 class AccidentRetriever:

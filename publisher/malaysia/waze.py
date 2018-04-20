@@ -3,8 +3,8 @@ import requests
 import json
 
 from publisher.core import AccidentRetriever, Boundary, AccidentPayload, AccidentLocation
-from core import ServiceError, ServicePayloadError
-from core import setup_logging
+from base import ServiceError, ServicePayloadError
+from base import setup_logging
 
 
 class KlangValleyAccidentRetriever(AccidentRetriever):
