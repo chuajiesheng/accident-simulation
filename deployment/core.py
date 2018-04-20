@@ -1,19 +1,11 @@
-import configparser
 import threading, time
-import pika
 import queue
 import logging
 
-
-from publisher.core import MissingConfigurationError
+from mq import RabbitMQ
 
 
 class Master:
-    MQ_SECTION = 'RabbitMQ'
-    MQ_SERVER = 'server'
-    MQ_USERNAME = 'username'
-    MQ_PASSWORD = 'password'
-    MQ_EXCHANGE = 'exchange'
 
     def __init__(self):
         self.logger = self.setup_logging()
@@ -77,55 +69,17 @@ class DeploymentMaster(StoppableThread):
         self.message_queue = message_queue
         self.logger = Master.setup_logging('DeploymentMaster')
 
-    @staticmethod
-    def setup_connection():
-        config = configparser.ConfigParser()
-        config.read('config.ini')
-
-        if Master.MQ_SECTION not in config.sections():
-            raise MissingConfigurationError('Missing {} section'.format(Master.MQ_SECTION))
-
-        keys = [key for key in config[Master.MQ_SECTION]]
-        if Master.MQ_SERVER not in keys:
-            raise MissingConfigurationError('Missing {} key'.format(Master.MQ_SERVER))
-
-        if Master.MQ_USERNAME not in keys:
-            raise MissingConfigurationError('Missing {} key'.format(Master.MQ_USERNAME))
-
-        if Master.MQ_PASSWORD not in keys:
-            raise MissingConfigurationError('Missing {} key'.format(Master.MQ_PASSWORD))
-
-        server = config[Master.MQ_SECTION][Master.MQ_SERVER]
-        username = config[Master.MQ_SECTION][Master.MQ_USERNAME]
-        password = config[Master.MQ_SECTION][Master.MQ_PASSWORD]
-
-        credentials = pika.PlainCredentials(username, password)
-        return pika.BlockingConnection(pika.ConnectionParameters(host=server, credentials=credentials))
-
-    @staticmethod
-    def exchange_name():
-        config = configparser.ConfigParser()
-        config.read('config.ini')
-
-        if Master.MQ_SECTION not in config.sections():
-            raise MissingConfigurationError('Missing {} section'.format(Master.MQ_SECTION))
-
-        if Master.MQ_EXCHANGE not in config[Master.MQ_SECTION].keys():
-            raise MissingConfigurationError('Missing {} key'.format(Master.MQ_EXCHANGE))
-
-        return config[Master.MQ_SECTION][Master.MQ_EXCHANGE]
-
     def consume(self):
-        connection = self.setup_connection()
+        connection = RabbitMQ.setup_connection()
         channel = connection.channel()
-        channel.exchange_declare(exchange=self.exchange_name(), exchange_type='topic')
+        channel.exchange_declare(exchange=RabbitMQ.exchange_name(), exchange_type='topic')
 
         result = channel.queue_declare(exclusive=True)
         queue_name = result.method.queue
 
         binding_keys = ['malaysia.klang_valley']
         for binding_key in binding_keys:
-            channel.queue_bind(exchange=self.exchange_name(), queue=queue_name, routing_key=binding_key)
+            channel.queue_bind(exchange=RabbitMQ.exchange_name(), queue=queue_name, routing_key=binding_key)
 
         self.logger.debug('binding to RabbitMQ')
 
