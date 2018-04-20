@@ -1,8 +1,10 @@
-from publisher.core import AccidentRetriever, Boundary, AccidentPayload, AccidentLocation
-from core import ServiceError, ServicePayloadError
 import time
 import requests
 import json
+
+from publisher.core import AccidentRetriever, Boundary, AccidentPayload, AccidentLocation
+from core import ServiceError, ServicePayloadError
+from core import setup_logging
 
 
 class KlangValleyAccidentRetriever(AccidentRetriever):
@@ -14,6 +16,7 @@ class KlangValleyAccidentRetriever(AccidentRetriever):
         boundary = Boundary(100.711638, 3.870733, 101.970674, 2.533530)
         interval = 60 * 10
         super(KlangValleyAccidentRetriever, self).__init__(boundary, interval)
+        self.logger = setup_logging('KlangValleyAccidentRetriever')
 
     @staticmethod
     def get_alerts():
@@ -44,9 +47,13 @@ class KlangValleyAccidentRetriever(AccidentRetriever):
         return payload['alerts']
 
     def watch(self):
-        while True:
-            alerts = self.get_alerts()
-            map(self.handle_alert, alerts)
+        try:
+            while True:
+                alerts = self.get_alerts()
+                self.logger.debug("alerts count=%s", len(alerts))
+                map(self.handle_alert, alerts)
+        except KeyboardInterrupt:
+            self.logger.debug('KeyboardInterrupt')
 
     def handle_alert(self, alert):
         alert_time_millis = alert['pubMillis']
@@ -64,7 +71,7 @@ class KlangValleyAccidentRetriever(AccidentRetriever):
         routing_key = 'malaysia.klang_valley'
         message = json.dumps(payload.to_dict())
         self.channel.basic_publish(exchange='accidents', routing_key=routing_key, body=message)
-        print(" [x] Sent %r:%r" % (routing_key, message))
+        self.logger.debug("Sent routing_key=%r message=%r", routing_key, message)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,8 @@
 import configparser
 import pika
 
+from core import MissingConfigurationError
+
 
 class RabbitMQ:
     MQ_SECTION = 'RabbitMQ'

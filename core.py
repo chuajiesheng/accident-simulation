@@ -1,3 +1,6 @@
+import logging
+
+
 class MissingConfigurationError(Exception):
     pass
 
@@ -8,3 +11,17 @@ class ServiceError(Exception):
 
 class ServicePayloadError(Exception):
     pass
+
+
+def setup_logging(name):
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+
+    logger.addHandler(ch)
+
+    return logger

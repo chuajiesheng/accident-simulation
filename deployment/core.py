@@ -1,32 +1,17 @@
 import threading
 import time
 import queue
-import logging
 
 from mq import RabbitMQ
+from core import setup_logging
 
 
 class Master:
-
     def __init__(self):
-        self.logger = self.setup_logging()
+        self.logger = setup_logging('Master')
         self.message_queue = queue.Queue()
         self.deployment_manager = DeploymentMaster(self.message_queue)
         self.logger.debug('initiated')
-
-    @staticmethod
-    def setup_logging(name='Master'):
-        logger = logging.getLogger(name)
-        logger.setLevel(logging.DEBUG)
-
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        ch.setFormatter(formatter)
-
-        logger.addHandler(ch)
-
-        return logger
 
     def start(self):
         self.logger.debug('starting')
@@ -35,11 +20,11 @@ class Master:
         try:
             while True:
                 time.sleep(5)
-                self.logger.debug('deployment manager status={}'.format(self.deployment_manager.is_alive()))
-                self.logger.debug('empty_queue={}'.format(self.message_queue.empty()))
+                self.logger.debug('deployment manager status=%s', self.deployment_manager.is_alive())
+                self.logger.debug('empty_queue=%s', self.message_queue.empty())
                 try:
                     msg = self.message_queue.get(block=False)
-                    self.logger.debug("message='{}'".format(msg))
+                    self.logger.debug("message=%r", msg)
                 except queue.Empty:
                     continue
 
@@ -68,7 +53,7 @@ class DeploymentMaster(StoppableThread):
     def __init__(self, message_queue):
         super(DeploymentMaster, self).__init__()
         self.message_queue = message_queue
-        self.logger = Master.setup_logging('DeploymentMaster')
+        self.logger = setup_logging('DeploymentMaster')
 
     def consume(self):
         connection = RabbitMQ.setup_connection()

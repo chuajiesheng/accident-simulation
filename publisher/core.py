@@ -4,10 +4,13 @@ from datetime import datetime
 import atexit
 
 from mq import RabbitMQ
+from core import setup_logging
 
 
 class AccidentRetriever:
     def __init__(self, boundary, interval):
+        self.logger = setup_logging('AccidentRetriever')
+
         self.boundary = boundary
         self.interval = interval
 
@@ -18,6 +21,7 @@ class AccidentRetriever:
         self.channel.exchange_declare(exchange=RabbitMQ.exchange_name(), exchange_type='topic')
 
         def close_connection():
+            self.logger.debug('Closing connection')
             connection.close()
 
         atexit.register(close_connection)
@@ -34,14 +38,19 @@ class RandomAccidentRetriever(AccidentRetriever):
     def __init__(self, boundary, interval):
         self.r = random.Random(42)
         super(RandomAccidentRetriever, self).__init__(boundary, interval)
+        self.logger = setup_logging('RandomAccidentRetriever')
 
     def watch(self):
-        while True:
-            lat = self.boundary.bottom + self.r.random() * (self.boundary.top - self.boundary.bottom)
-            long = self.boundary.left + self.r.random() * (self.boundary.right - self.boundary.left)
+        try:
+            while True:
+                lat = self.boundary.bottom + self.r.random() * (self.boundary.top - self.boundary.bottom)
+                long = self.boundary.left + self.r.random() * (self.boundary.right - self.boundary.left)
 
-            self.publish(AccidentPayload(self.boundary, AccidentLocation(lat, long)))
-            time.sleep(self.interval)
+                self.publish(AccidentPayload(self.boundary, AccidentLocation(lat, long)))
+                self.logger.debug('Sleep secs=%s', self.interval)
+                time.sleep(self.interval)
+        except KeyboardInterrupt:
+            self.logger.debug('KeyboardInterrupt')
 
     @staticmethod
     def publish(payload):
