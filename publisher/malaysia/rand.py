@@ -15,7 +15,7 @@ class KlangValleyRandomAccidentRetriever(RandomAccidentRetriever):
         routing_key = 'malaysia.klang_valley'
         message = json.dumps(payload.to_dict())
         self.channel.basic_publish(exchange='accidents', routing_key=routing_key, body=message)
-        self.logger.debug("Sent routing_key=%r message=%r".format(routing_key, message))
+        self.logger.debug("Sent routing_key=%r message=%r", routing_key, message)
 
 
 if __name__ == "__main__":
