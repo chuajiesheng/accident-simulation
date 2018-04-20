@@ -30,10 +30,10 @@ class AccidentRetriever:
         raise NotImplementedError
 
 
-class RandomAccidentRetrieve(AccidentRetriever):
+class RandomAccidentRetriever(AccidentRetriever):
     def __init__(self, boundary, interval):
         self.r = random.Random(42)
-        super(RandomAccidentRetrieve, self).__init__(boundary, interval)
+        super(RandomAccidentRetriever, self).__init__(boundary, interval)
 
     def watch(self):
         while True:

@@ -1,15 +1,12 @@
-from publisher.core import RandomAccidentRetrieve, AccidentRetriever, ServiceError, ServicePayloadError, Boundary, AccidentPayload, AccidentLocation
-import time
-import requests
-import pika
+from publisher.core import RandomAccidentRetriever, Boundary
 import json
 
 
-class KlangValleyRandomAccidentRetrieve(RandomAccidentRetrieve):
+class KlangValleyRandomAccidentRetriever(RandomAccidentRetriever):
     def __init__(self):
         boundary = Boundary(100.711638, 3.870733, 101.970674, 2.533530)
         interval = 5
-        super(KlangValleyRandomAccidentRetrieve, self).__init__(boundary, interval)
+        super(KlangValleyRandomAccidentRetriever, self).__init__(boundary, interval)
 
     def publish(self, payload):
         routing_key = 'malaysia.klang_valley'
@@ -19,6 +16,6 @@ class KlangValleyRandomAccidentRetrieve(RandomAccidentRetrieve):
 
 
 if __name__ == "__main__":
-    retriever = KlangValleyRandomAccidentRetrieve()
+    retriever = KlangValleyRandomAccidentRetriever()
     retriever.watch()
 

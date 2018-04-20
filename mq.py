@@ -47,15 +47,3 @@ class RabbitMQ:
             raise MissingConfigurationError('Missing {} key'.format(RabbitMQ.MQ_EXCHANGE))
 
         return config[RabbitMQ.MQ_SECTION][RabbitMQ.MQ_EXCHANGE]
-
-
-class MissingConfigurationError(Exception):
-    pass
-
-
-class ServiceError(Exception):
-    pass
-
-
-class ServicePayloadError(Exception):
-    pass

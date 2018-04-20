@@ -1,7 +1,7 @@
-from publisher.core import RandomAccidentRetrieve, AccidentRetriever, ServiceError, ServicePayloadError, Boundary, AccidentPayload, AccidentLocation
+from publisher.core import AccidentRetriever, Boundary, AccidentPayload, AccidentLocation
+from core import ServiceError, ServicePayloadError
 import time
 import requests
-import pika
 import json
 
 
