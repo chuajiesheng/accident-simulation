@@ -1,4 +1,3 @@
-import threading
 import time
 import queue
 import uuid
@@ -7,7 +6,7 @@ import json
 import functools
 
 from mq import RabbitMQ
-from base import setup_logging
+from base import setup_logging, StoppableThread
 from gamemaster import core
 
 
@@ -73,21 +72,6 @@ class Master:
             self.deployment_manager.stop()
             self.logger.debug('KeyboardInterrupt')
             self.deployment_manager.join()
-
-
-class StoppableThread(threading.Thread):
-    def __init__(self):
-        super(StoppableThread, self).__init__(daemon=True, target=self.consume)
-        self._stop_event = threading.Event()
-
-    def consume(self):
-        raise NotImplemented
-
-    def stop(self):
-        self._stop_event.set()
-
-    def stopped(self):
-        return self._stop_event.is_set()
 
 
 class DeploymentMaster(StoppableThread):

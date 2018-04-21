@@ -1,4 +1,5 @@
 import logging
+import threading
 
 
 class ServiceError(Exception):
@@ -25,3 +26,18 @@ def setup_logging(name):
     logger.addHandler(ch)
 
     return logger
+
+
+class StoppableThread(threading.Thread):
+    def __init__(self):
+        super(StoppableThread, self).__init__(daemon=True, target=self.consume)
+        self._stop_event = threading.Event()
+
+    def consume(self):
+        raise NotImplemented
+
+    def stop(self):
+        self._stop_event.set()
+
+    def stopped(self):
+        return self._stop_event.is_set()
