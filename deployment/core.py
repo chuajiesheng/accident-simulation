@@ -50,7 +50,7 @@ class Master:
     def start(self):
         self.logger.debug('request accessor group')
         self.request_assessor_group_rpc({
-            'groupId': str(uuid.uuid4()),
+            'group_uuid': str(uuid.uuid4()),
             'assessors': 5
         })
 
@@ -69,8 +69,10 @@ class Master:
                     continue
 
         except KeyboardInterrupt:
-            self.deployment_manager.stop()
             self.logger.debug('KeyboardInterrupt')
+        finally:
+            self.logger.debug('stopping deployment manager')
+            self.deployment_manager.stop()
             self.deployment_manager.join()
 
 
