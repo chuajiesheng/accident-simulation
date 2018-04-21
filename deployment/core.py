@@ -51,7 +51,7 @@ class Master:
         self.logger.debug('request accessor group')
         self.request_assessor_group_rpc({
             'group_uuid': str(uuid.uuid4()),
-            'assessors': 5
+            'assessor_count': 5
         })
 
         self.logger.debug('starting deployment manager')
