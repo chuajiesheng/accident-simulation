@@ -1,7 +1,6 @@
 import random
 
 from deployment.core import Master
-from publisher.core import Boundary
 
 
 class SimpleKlangValleyDeploymentMaster(Master):

@@ -4,7 +4,8 @@ import uuid
 import pika
 import json
 import functools
-from enum import Enum
+from enum import Enum, auto
+from datetime import datetime
 
 from mq import RabbitMQ
 from base import setup_logging, StoppableThread
@@ -13,8 +14,8 @@ from gamemaster import core
 
 class Master:
     class Action(Enum):
-        WHERE = 0
-        GO = 1
+        WHERE = 'where'
+        GO = 'go'
 
     team_detail = None
 
@@ -93,6 +94,12 @@ class Master:
         player_queue = '{}.player{}'.format(self.team_uuid, player)
         self.logger.debug('telling player%s to %r to %r', player, action, payload)
 
+        message = {
+            'action': action.value,
+            'accident': payload,
+            'utc_decision_time': datetime.utcnow().timestamp()
+        }
+
         with RabbitMQ.setup_connection() as connection:
             channel = connection.channel()
 
@@ -111,7 +118,7 @@ class Master:
                                   routing_key=player_queue,
                                   properties=pika.BasicProperties(reply_to=callback_queue,
                                                                   correlation_id=corr_id),
-                                  body=json.dumps(payload))
+                                  body=json.dumps(message))
 
             self.logger.debug('waiting to process event')
             while self.team_detail is None:
