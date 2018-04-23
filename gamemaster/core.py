@@ -80,7 +80,7 @@ class Player(Process):
         super(Player, self).__init__(target=self.consume, daemon=True)
         self.group_uuid = group_uuid
         self.player_id = player_id
-        self.queue_name = '{}.{}'.format(group_uuid, player_id)
+        self.queue_name = '{}.player{}'.format(group_uuid, player_id)
         self.logger = setup_logging('Player {}'.format(self.queue_name))
         self.logger.debug('initiated')
 
