@@ -20,7 +20,7 @@ class DeploymentMaster:
     team_detail = None
 
     def __init__(self):
-        self.logger = setup_logging('Master')
+        self.logger = setup_logging('DeploymentMaster')
 
         self.message_queue = queue.Queue()
         self.deployment_manager = DeploymentEventConsumer(self.message_queue)
