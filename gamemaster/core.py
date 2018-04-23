@@ -6,6 +6,7 @@ from collections import deque
 import sys
 import threading
 
+from deployment.core import DeploymentMaster
 from mq import RabbitMQ
 from base import setup_logging, deserialize_message
 

@@ -130,7 +130,7 @@ class DeploymentEventConsumer(StoppableThread):
     def __init__(self, message_queue):
         super(DeploymentEventConsumer, self).__init__()
         self.message_queue = message_queue
-        self.logger = setup_logging('DeploymentMaster')
+        self.logger = setup_logging('DeploymentEventConsumer')
 
     def consume(self):
         connection = RabbitMQ.setup_connection()
