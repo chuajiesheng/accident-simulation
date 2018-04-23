@@ -89,6 +89,36 @@ class Master:
     def decide(self, payload):
         raise NotImplemented
 
+    def tell(self, player, action, payload):
+        player_queue = '{}.player{}'.format(self.team_uuid, player)
+        self.logger.debug('telling player%s to %r to %r', player, action, payload)
+
+        with RabbitMQ.setup_connection() as connection:
+            channel = connection.channel()
+
+            result = channel.queue_declare(exclusive=True)
+            callback_queue = result.method.queue
+
+            corr_id = str(uuid.uuid4())
+
+            def on_response(parent, correlation_id, ch, method, props, body):
+                if correlation_id == props.correlation_id:
+                    parent.team_detail = body
+                    parent.logger.debug('on_response, response=%r', body)
+
+            channel.basic_consume(functools.partial(on_response, self, corr_id), no_ack=True, queue=callback_queue)
+            channel.basic_publish(exchange='',
+                                  routing_key=player_queue,
+                                  properties=pika.BasicProperties(reply_to=callback_queue,
+                                                                  correlation_id=corr_id),
+                                  body=json.dumps(payload))
+
+            self.logger.debug('waiting to process event')
+            while self.team_detail is None:
+                connection.process_data_events()
+
+            self.logger.debug('response=%r', self.team_detail)
+
 
 class DeploymentEventConsumer(StoppableThread):
     def __init__(self, message_queue):
@@ -115,7 +145,7 @@ class DeploymentEventConsumer(StoppableThread):
 
     def process(self, channel, method, properties, body):
         self.logger.debug('method.routing_key=%s; body=%s;', method.routing_key, body)
-        self.message_queue.put(body)
+        self.message_queue.put(body.decode('utf-8'))
 
         if self.stopped():
             channel.stop_consuming()

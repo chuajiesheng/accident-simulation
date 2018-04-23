@@ -4,6 +4,7 @@ import json
 from multiprocessing import Process
 from collections import deque
 import sys
+import threading
 
 from mq import RabbitMQ
 from base import setup_logging
