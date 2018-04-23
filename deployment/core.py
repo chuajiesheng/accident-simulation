@@ -65,6 +65,7 @@ class Master:
                 try:
                     msg = self.message_queue.get(block=False)
                     self.logger.debug("message=%r", msg)
+                    self.decide(msg)
                 except queue.Empty:
                     continue
 
@@ -74,6 +75,9 @@ class Master:
             self.logger.debug('stopping deployment manager')
             self.deployment_manager.stop()
             self.deployment_manager.join()
+
+    def decide(self, payload):
+        raise NotImplemented
 
 
 class DeploymentEventConsumer(StoppableThread):
@@ -106,8 +110,3 @@ class DeploymentEventConsumer(StoppableThread):
         if self.stopped():
             channel.stop_consuming()
             self.logger.debug('stop consuming')
-
-
-if __name__ == "__main__":
-    m = Master()
-    m.start()
