@@ -12,7 +12,7 @@ from base import setup_logging, StoppableThread, deserialize_message
 from gamemaster import core
 
 
-class Master:
+class DeploymentMaster:
     class Action(Enum):
         WHERE = 'where'
         GO = 'go'
