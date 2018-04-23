@@ -80,21 +80,34 @@ class Player(Process):
         super(Player, self).__init__(target=self.consume, daemon=True)
         self.group_uuid = group_uuid
         self.player_id = player_id
-        self.logger = setup_logging('Player {}.{}'.format(group_uuid, player_id))
+        self.queue_name = '{}.{}'.format(group_uuid, player_id)
+        self.logger = setup_logging('Player {}'.format(self.queue_name))
         self.logger.debug('initiated')
+
+    def handle_rpc_call(self, channel, method, props, body):
+        self.logger.debug('method.routing_key=%s; body=%s;', method.routing_key, body)
+        response = 'ok'
+        channel.basic_publish(exchange='',
+                              routing_key=props.reply_to,
+                              properties=pika.BasicProperties(correlation_id=props.correlation_id),
+                              body=str(response))
+        channel.basic_ack(delivery_tag=method.delivery_tag)
 
     def consume(self):
         connection = RabbitMQ.setup_connection()
+
+        def close_connection():
+            self.logger.debug('Closing connection')
+            connection.close()
+
+        atexit.register(close_connection)
+
         channel = connection.channel()
-        channel.exchange_declare(exchange=self.EXCHANGE_NAME, exchange_type='topic')
-        result = channel.queue_declare(exclusive=True)
-        queue_name = result.method.queue
+        channel.queue_declare(queue=self.queue_name)
+        channel.basic_qos(prefetch_count=1)
+        channel.basic_consume(self.handle_rpc_call, queue=self.queue_name)
 
-        binding_key = '{}.{}'.format(self.group_uuid, self.player_id)
-        channel.queue_bind(exchange=self.EXCHANGE_NAME, queue=queue_name, routing_key=binding_key)
-        self.logger.debug('binding to RabbitMQ with keys=%r', binding_key)
-
-        channel.basic_consume(self.process, queue=queue_name, no_ack=True)
+        self.logger.debug('binding to RabbitMQ with keys=%r', self.queue_name)
 
         try:
             self.logger.debug('start consuming')
@@ -107,9 +120,6 @@ class Player(Process):
             channel.stop_consuming()
             connection.close()
             self.logger.debug('stopping')
-
-    def process(self, channel, method, properties, body):
-        self.logger.debug('method.routing_key=%s; body=%s;', method.routing_key, body)
 
 
 if __name__ == "__main__":

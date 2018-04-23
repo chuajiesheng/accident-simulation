@@ -3,6 +3,7 @@ import pika
 
 from base import MissingConfigurationError
 
+
 class RabbitMQ:
     MQ_SECTION = 'RabbitMQ'
     MQ_SERVER = 'server'
