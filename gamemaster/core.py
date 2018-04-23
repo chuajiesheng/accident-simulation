@@ -11,7 +11,7 @@ from base import setup_logging
 
 class GameMaster:
     QUEUE_NAME = 'game_master'
-    assessors = {}
+    players = {}
 
     def __init__(self):
         self.logger = setup_logging('GameMaster')
@@ -32,17 +32,17 @@ class GameMaster:
 
     def on_request(self, channel, method, props, body):
         payload = json.loads(body)
-        self.logger.debug('payload=%r', payload)
 
         response = 'ok'
-        group_uuid = payload['group_uuid']
-        for i in range(payload['assessor_count']):
-            if group_uuid not in self.assessors.keys():
-                self.assessors[group_uuid] = []
+        team_uuid = payload['team_uuid']
+        self.logger.debug('spawning team=%r, size=%s', team_uuid, payload['player_count'])
+        for i in range(payload['player_count']):
+            if team_uuid not in self.players.keys():
+                self.players[team_uuid] = []
 
-            assessor = Assessor(group_uuid, i)
-            assessor.start()
-            self.assessors[group_uuid].append(assessor)
+            player = Player(team_uuid, i)
+            player.start()
+            self.players[team_uuid].append(player)
 
         channel.basic_publish(exchange='',
                               routing_key=props.reply_to,
@@ -62,25 +62,25 @@ class GameMaster:
         except KeyboardInterrupt:
             self.logger.debug('KeyboardInterrupt')
         finally:
-            def terminate_group(assessors):
-                self.logger.debug('terminating pids=%r', list(map(lambda assessor: assessor.pid, assessors)))
-                self.logger.debug('terminating is_alive=%r', list(map(lambda assessor: assessor.is_alive(), assessors)))
-                deque(map(lambda assessor: assessor.terminate(), assessors), maxlen=0)
+            def terminate_group(players):
+                self.logger.debug('terminating pids=%r', list(map(lambda player: player.pid, players)))
+                self.logger.debug('terminating is_alive=%r', list(map(lambda player: player.is_alive(), players)))
+                deque(map(lambda player: player.terminate(), players), maxlen=0)
 
-            for k in self.assessors.keys():
-                terminate_group(self.assessors[k])
+            for k in self.players.keys():
+                terminate_group(self.players[k])
 
         self.logger.debug('serve() completed')
 
 
-class Assessor(Process):
-    EXCHANGE_NAME = 'assessor'
+class Player(Process):
+    EXCHANGE_NAME = 'player'
 
-    def __init__(self, group_uuid, assessor_id):
-        super(Assessor, self).__init__(target=self.consume, daemon=True)
+    def __init__(self, group_uuid, player_id):
+        super(Player, self).__init__(target=self.consume, daemon=True)
         self.group_uuid = group_uuid
-        self.assessor_id = assessor_id
-        self.logger = setup_logging('Assessor {}.{}'.format(group_uuid, assessor_id))
+        self.player_id = player_id
+        self.logger = setup_logging('Player {}.{}'.format(group_uuid, player_id))
         self.logger.debug('initiated')
 
     def consume(self):
@@ -90,7 +90,7 @@ class Assessor(Process):
         result = channel.queue_declare(exclusive=True)
         queue_name = result.method.queue
 
-        binding_key = '{}.{}'.format(self.group_uuid, self.assessor_id)
+        binding_key = '{}.{}'.format(self.group_uuid, self.player_id)
         channel.queue_bind(exchange=self.EXCHANGE_NAME, queue=queue_name, routing_key=binding_key)
         self.logger.debug('binding to RabbitMQ with keys=%r', binding_key)
 

@@ -11,7 +11,7 @@ from gamemaster import core
 
 
 class Master:
-    assessor_group = None
+    team_detail = None
 
     def __init__(self):
         self.logger = setup_logging('Master')
@@ -19,7 +19,7 @@ class Master:
         self.deployment_manager = DeploymentMaster(self.message_queue)
         self.logger.debug('initiated')
 
-    def request_assessor_group_rpc(self, payload):
+    def request_team_rpc(self, payload):
         connection = RabbitMQ.setup_connection()
         channel = connection.channel()
 
@@ -29,8 +29,8 @@ class Master:
         corr_id = str(uuid.uuid4())
 
         def on_response(parent, correlation_id, ch, method, props, body):
-            if correlation_id== props.correlation_id:
-                parent.assessor_group = body
+            if correlation_id == props.correlation_id:
+                parent.team_detail = body
                 parent.logger.debug('on_response, response=%r', body)
 
         channel.basic_consume(functools.partial(on_response, self, corr_id), no_ack=True, queue=callback_queue)
@@ -41,17 +41,17 @@ class Master:
                               body=json.dumps(payload))
 
         self.logger.debug('waiting to process event')
-        while self.assessor_group is None:
+        while self.team_detail is None:
             connection.process_data_events()
 
-        self.logger.debug('response=%r', self.assessor_group)
-        return self.assessor_group
+        self.logger.debug('response=%r', self.team_detail)
+        return self.team_detail
 
     def start(self):
-        self.logger.debug('request accessor group')
-        self.request_assessor_group_rpc({
-            'group_uuid': str(uuid.uuid4()),
-            'assessor_count': 5
+        self.logger.debug('request team')
+        self.request_team_rpc({
+            'team_uuid': str(uuid.uuid4()),
+            'player_count': 5
         })
 
         self.logger.debug('starting deployment manager')
