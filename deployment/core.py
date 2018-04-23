@@ -16,7 +16,7 @@ class Master:
     def __init__(self):
         self.logger = setup_logging('Master')
         self.message_queue = queue.Queue()
-        self.deployment_manager = DeploymentMaster(self.message_queue)
+        self.deployment_manager = DeploymentEventConsumer(self.message_queue)
         self.logger.debug('initiated')
 
     def request_team_rpc(self, payload):
@@ -76,9 +76,9 @@ class Master:
             self.deployment_manager.join()
 
 
-class DeploymentMaster(StoppableThread):
+class DeploymentEventConsumer(StoppableThread):
     def __init__(self, message_queue):
-        super(DeploymentMaster, self).__init__()
+        super(DeploymentEventConsumer, self).__init__()
         self.message_queue = message_queue
         self.logger = setup_logging('DeploymentMaster')
 
