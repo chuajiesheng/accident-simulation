@@ -145,7 +145,13 @@ class DeploymentEventConsumer(StoppableThread):
 
     def process(self, channel, method, properties, body):
         self.logger.debug('method.routing_key=%s; body=%s;', method.routing_key, body)
-        self.message_queue.put(body.decode('utf-8'))
+
+        body_str = body.decode('utf-8')
+        assert type(body_str) is str
+        body_dict = json.loads(body_str)
+        assert type(body_dict) is dict
+
+        self.message_queue.put(body_dict)
 
         if self.stopped():
             channel.stop_consuming()
