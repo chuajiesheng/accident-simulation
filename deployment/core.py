@@ -4,11 +4,11 @@ import uuid
 import pika
 import json
 import functools
-from enum import Enum, auto
+from enum import Enum
 from datetime import datetime
 
 from mq import RabbitMQ
-from base import setup_logging, StoppableThread
+from base import setup_logging, StoppableThread, deserialize_message
 from gamemaster import core
 
 
@@ -152,13 +152,7 @@ class DeploymentEventConsumer(StoppableThread):
 
     def process(self, channel, method, properties, body):
         self.logger.debug('method.routing_key=%s; body=%s;', method.routing_key, body)
-
-        body_str = body.decode('utf-8')
-        assert type(body_str) is str
-        body_dict = json.loads(body_str)
-        assert type(body_dict) is dict
-
-        self.message_queue.put(body_dict)
+        self.message_queue.put(deserialize_message(body))
 
         if self.stopped():
             channel.stop_consuming()

@@ -7,7 +7,7 @@ import sys
 import threading
 
 from mq import RabbitMQ
-from base import setup_logging
+from base import setup_logging, deserialize_message
 
 
 class GameMaster:
@@ -87,11 +87,11 @@ class Player(Process):
 
     def handle_rpc_call(self, channel, method, props, body):
         self.logger.debug('method.routing_key=%s; body=%s;', method.routing_key, body)
-        response = 'ok'
+        response = self.handle(deserialize_message(body))
         channel.basic_publish(exchange='',
                               routing_key=props.reply_to,
                               properties=pika.BasicProperties(correlation_id=props.correlation_id),
-                              body=str(response))
+                              body=json.dumps(response))
         channel.basic_ack(delivery_tag=method.delivery_tag)
 
     def consume(self):

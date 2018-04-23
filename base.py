@@ -1,5 +1,6 @@
 import logging
 import threading
+import json
 
 
 class ServiceError(Exception):
@@ -26,6 +27,15 @@ def setup_logging(name):
     logger.addHandler(ch)
 
     return logger
+
+
+def deserialize_message(body):
+    s = body.decode('utf-8')
+    assert type(s) is str
+    d = json.loads(s)
+    assert type(d) is dict
+
+    return d
 
 
 class StoppableThread(threading.Thread):
