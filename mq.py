@@ -10,6 +10,7 @@ class RabbitMQ:
     MQ_USERNAME = 'username'
     MQ_PASSWORD = 'password'
     MQ_EXCHANGE = 'exchange'
+    MQ_GAME_MASTER_QUEUE = 'game_master_queue'
 
     @staticmethod
     def setup_connection():
@@ -49,3 +50,16 @@ class RabbitMQ:
             raise MissingConfigurationError('Missing {} key'.format(RabbitMQ.MQ_EXCHANGE))
 
         return config[RabbitMQ.MQ_SECTION][RabbitMQ.MQ_EXCHANGE]
+
+    @staticmethod
+    def game_master_queue_name():
+        config = configparser.ConfigParser()
+        config.read('config.ini')
+
+        if RabbitMQ.MQ_SECTION not in config.sections():
+            raise MissingConfigurationError('Missing {} section'.format(RabbitMQ.MQ_SECTION))
+
+        if RabbitMQ.MQ_GAME_MASTER_QUEUE not in config[RabbitMQ.MQ_SECTION].keys():
+            raise MissingConfigurationError('Missing {} key'.format(RabbitMQ.MQ_GAME_MASTER_QUEUE))
+
+        return config[RabbitMQ.MQ_SECTION][RabbitMQ.MQ_GAME_MASTER_QUEUE]

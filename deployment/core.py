@@ -9,7 +9,6 @@ from datetime import datetime
 
 from mq import RabbitMQ
 from base import setup_logging, StoppableThread, deserialize_message
-from gamemaster import core
 
 
 class DeploymentMaster:
@@ -46,7 +45,7 @@ class DeploymentMaster:
 
         channel.basic_consume(functools.partial(on_response, self, corr_id), no_ack=True, queue=callback_queue)
         channel.basic_publish(exchange='',
-                              routing_key=core.GameMaster.QUEUE_NAME,
+                              routing_key=RabbitMQ.game_master_queue_name(),
                               properties=pika.BasicProperties(reply_to=callback_queue,
                                                               correlation_id=corr_id),
                               body=json.dumps(payload))

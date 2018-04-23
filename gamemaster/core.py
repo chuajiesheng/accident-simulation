@@ -11,7 +11,6 @@ from base import setup_logging, deserialize_message
 
 
 class GameMaster:
-    QUEUE_NAME = 'game_master'
     players = {}
 
     def __init__(self):
@@ -26,7 +25,7 @@ class GameMaster:
         atexit.register(close_connection)
 
         channel = connection.channel()
-        channel.queue_declare(queue=self.QUEUE_NAME)
+        channel.queue_declare(queue=RabbitMQ.game_master_queue_name())
 
         self.connection = connection
         self.channel = channel
@@ -54,7 +53,7 @@ class GameMaster:
 
     def serve(self):
         self.channel.basic_qos(prefetch_count=1)
-        self.channel.basic_consume(self.on_request, queue=self.QUEUE_NAME)
+        self.channel.basic_consume(self.on_request, queue=RabbitMQ.game_master_queue_name())
 
         self.logger.debug('ready for rpc request')
 
