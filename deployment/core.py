@@ -4,6 +4,7 @@ import uuid
 import pika
 import json
 import functools
+from enum import Enum
 
 from mq import RabbitMQ
 from base import setup_logging, StoppableThread
@@ -11,12 +12,21 @@ from gamemaster import core
 
 
 class Master:
+    class Action(Enum):
+        WHERE = 0
+        GO = 1
+
     team_detail = None
 
     def __init__(self):
         self.logger = setup_logging('Master')
+
         self.message_queue = queue.Queue()
         self.deployment_manager = DeploymentEventConsumer(self.message_queue)
+
+        self.team_uuid = str(uuid.uuid4())
+        self.player_count = 5
+
         self.logger.debug('initiated')
 
     def request_team_rpc(self, payload):
@@ -50,8 +60,8 @@ class Master:
     def start(self):
         self.logger.debug('request team')
         self.request_team_rpc({
-            'team_uuid': str(uuid.uuid4()),
-            'player_count': 5
+            'team_uuid': self.team_uuid,
+            'player_count': self.player_count
         })
 
         self.logger.debug('starting deployment manager')
