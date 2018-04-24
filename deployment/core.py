@@ -11,11 +11,12 @@ from mq import RabbitMQ
 from base import setup_logging, StoppableThread, deserialize_message
 
 
-class DeploymentMaster:
-    class Action(Enum):
-        WHERE = 'where'
-        GO = 'go'
+class Action(Enum):
+    WHERE = 'where'
+    GO = 'go'
 
+
+class DeploymentMaster:
     team_detail = None
 
     def __init__(self):
@@ -95,7 +96,7 @@ class DeploymentMaster:
 
         message = {
             'action': action.value,
-            'accident': payload,
+            'payload': payload,
             'utc_decision_time': datetime.utcnow().timestamp()
         }
 

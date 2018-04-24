@@ -6,7 +6,7 @@ from collections import deque
 import sys
 import threading
 
-from deployment.core import DeploymentMaster
+from deployment.core import Action
 from mq import RabbitMQ
 from base import setup_logging, deserialize_message
 
@@ -81,9 +81,31 @@ class Player(Process):
         super(Player, self).__init__(target=self.consume, daemon=True)
         self.group_uuid = group_uuid
         self.player_id = player_id
-        self.queue_name = '{}.player{}'.format(group_uuid, player_id)
-        self.logger = setup_logging('Player {}'.format(self.queue_name))
+        self.object_name = '{}.player{}'.format(group_uuid, player_id)
+        self.queue_name = self.object_name
+
+        self.logger = setup_logging(self.object_name)
+
+        self.state = PlayerState(self.object_name)
+
         self.logger.debug('initiated')
+
+    def handle(self, message):
+        self.logger.debug('handling message=%r', message)
+
+        action = Action(message['action'])
+        response = {'state': 'ok'}
+
+        if action == Action.GO:
+            payload = message['payload']
+            self.state.move_to(payload['accident']['lat'], payload['accident']['long'])
+        elif action == Action.WHERE:
+            response['player'] = {
+                'lat': self.state.lat,
+                'long': self.state.long
+            }
+
+        return response
 
     def handle_rpc_call(self, channel, method, props, body):
         self.logger.debug('method.routing_key=%s; body=%s;', method.routing_key, body)
@@ -121,6 +143,29 @@ class Player(Process):
             channel.stop_consuming()
             connection.close()
             self.logger.debug('stopping')
+
+
+class PlayerState:
+    condition = threading.Condition()
+
+    def __init__(self, player_name):
+        self.player_name = player_name
+        self.logger = setup_logging('{}.state'.format(player_name))
+        self.lat = 0
+        self.long = 0
+
+        self.logger.debug('initiated')
+
+    def move_to(self, lat, long):
+        self.condition.acquire()
+
+        self.lat = lat
+        self.long = long
+
+        self.logger.debug('moving to lat=%r, long=%r', lat, long)
+
+        self.condition.notify_all()
+        self.condition.release()
 
 
 if __name__ == "__main__":
