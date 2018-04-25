@@ -2,9 +2,11 @@ import pika
 import atexit
 import json
 from multiprocessing import Process
+from threading import Thread
 from collections import deque
 import sys
 import threading
+import time
 
 from deployment.core import Action
 from mq import RabbitMQ
@@ -116,6 +118,11 @@ class Player(Process):
                               body=json.dumps(response))
         channel.basic_ack(delivery_tag=method.delivery_tag)
 
+    def update(self):
+        while True:
+            self.logger.debug('update')
+            time.sleep(3)
+
     def consume(self):
         connection = RabbitMQ.setup_connection()
 
@@ -132,7 +139,11 @@ class Player(Process):
 
         self.logger.debug('binding to RabbitMQ with keys=%r', self.queue_name)
 
+        update_thread = Thread(target=self.update, name='{}.update_thread'.format(self.object_name), daemon=True)
+
         try:
+            self.logger.debug('start update thread')
+            update_thread.start()
             self.logger.debug('start consuming')
             channel.start_consuming()
         except KeyboardInterrupt:
