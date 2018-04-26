@@ -18,6 +18,7 @@ class Action(Enum):
 
 class DeploymentMaster:
     team_detail = None
+    boundary = None
 
     def __init__(self):
         self.logger = setup_logging('DeploymentMaster')
@@ -62,7 +63,8 @@ class DeploymentMaster:
         self.logger.debug('request team')
         self.request_team_rpc({
             'team_uuid': self.team_uuid,
-            'player_count': self.player_count
+            'player_count': self.player_count,
+            'team_boundary': self.boundary
         })
 
         self.logger.debug('starting deployment manager')
