@@ -1,7 +1,7 @@
 import json
 
-from publisher.core import RandomAccidentRetriever, Boundary
-from base import setup_logging
+from publisher.core import RandomAccidentRetriever
+from base import setup_logging, Boundary
 
 
 class KlangValleyRandomAccidentRetriever(RandomAccidentRetriever):

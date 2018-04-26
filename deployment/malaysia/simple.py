@@ -1,6 +1,6 @@
 import random
 
-from base import setup_logging
+from base import setup_logging, Boundary
 from deployment.core import DeploymentMaster, Action
 
 
