@@ -69,6 +69,11 @@ class AccidentLocation:
 
 
 class Boundary:
+
+    @staticmethod
+    def from_dict(o):
+        return Boundary(o['left'], o['top'], o['right'], o['bottom'])
+
     def __init__(self, left, top, right, bottom):
         self.left = left
         self.top = top

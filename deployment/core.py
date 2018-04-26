@@ -64,7 +64,7 @@ class DeploymentMaster:
         self.request_team_rpc({
             'team_uuid': self.team_uuid,
             'player_count': self.player_count,
-            'team_boundary': self.boundary
+            'team_boundary': self.boundary.to_dict()
         })
 
         self.logger.debug('starting deployment manager')

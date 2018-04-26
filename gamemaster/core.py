@@ -12,7 +12,7 @@ import time
 
 from deployment.core import Action
 from mq import RabbitMQ
-from base import setup_logging, deserialize_message, AccidentLocation
+from base import setup_logging, deserialize_message, AccidentLocation, Boundary
 
 
 class GameMaster:
@@ -40,12 +40,16 @@ class GameMaster:
 
         response = 'ok'
         team_uuid = payload['team_uuid']
-        self.logger.debug('spawning team=%r, size=%s', team_uuid, payload['player_count'])
-        for i in range(payload['player_count']):
+        player_count = payload['player_count']
+        team_boundary = Boundary.from_dict(payload['team_boundary'])
+
+        self.logger.debug('spawning team=%r, size=%s within_boundary=%r',
+                          team_uuid, player_count, team_boundary.to_dict())
+        for i in range(player_count):
             if team_uuid not in self.players.keys():
                 self.players[team_uuid] = []
 
-            player = Player(team_uuid, i)
+            player = Player(team_uuid, i, team_boundary)
             player.start()
             self.players[team_uuid].append(player)
 
@@ -81,16 +85,17 @@ class GameMaster:
 class Player(Process):
     EXCHANGE_NAME = 'player'
 
-    def __init__(self, group_uuid, player_id):
+    def __init__(self, group_uuid, player_id, boundary):
         super(Player, self).__init__(target=self.consume, daemon=True)
         self.group_uuid = group_uuid
         self.player_id = player_id
         self.object_name = '{}.player{}'.format(group_uuid, player_id)
         self.queue_name = self.object_name
+        self.boundary = boundary
 
         self.logger = setup_logging(self.object_name)
 
-        self.state = PlayerState(self.object_name)
+        self.state = PlayerState(self.object_name, boundary)
 
         self.logger.debug('initiated')
 
@@ -160,9 +165,10 @@ class Player(Process):
 
 class PlayerState:
     condition = threading.Condition()
-
-    def __init__(self, player_name):
+    
+    def __init__(self, player_name, boundary):
         self.player_name = player_name
+        self.boundary = boundary
         self.logger = setup_logging('{}.state'.format(player_name))
 
         self.lat = 0
