@@ -165,6 +165,12 @@ class Player(Process):
             self.logger.debug('stopping')
 
 
+class Status(Enum):
+    EN_ROUTE = 'en_route'
+    IDLE = 'idle'
+    BREAK = 'break'
+
+
 class PlayerState:
     condition = threading.Condition()
     
