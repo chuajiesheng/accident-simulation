@@ -54,3 +54,15 @@ class StoppableThread(threading.Thread):
 
     def stopped(self):
         return self._stop_event.is_set()
+
+
+class AccidentLocation:
+    def __init__(self, lat, long):
+        self.lat = lat
+        self.long = long
+
+    def to_dict(self):
+        return {
+            'lat': self.lat,
+            'long': self.long
+        }

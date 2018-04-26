@@ -10,7 +10,7 @@ import time
 
 from deployment.core import Action
 from mq import RabbitMQ
-from base import setup_logging, deserialize_message
+from base import setup_logging, deserialize_message, AccidentLocation
 
 
 class GameMaster:

@@ -4,7 +4,7 @@ from datetime import datetime
 import atexit
 
 from mq import RabbitMQ
-from base import setup_logging
+from base import setup_logging, AccidentLocation
 
 
 class AccidentRetriever:
@@ -70,18 +70,6 @@ class Boundary:
             'top': self.top,
             'right': self.right,
             'bottom': self.bottom
-        }
-
-
-class AccidentLocation:
-    def __init__(self, lat, long):
-        self.lat = lat
-        self.long = long
-
-    def to_dict(self):
-        return {
-            'lat': self.lat,
-            'long': self.long
         }
 
 
