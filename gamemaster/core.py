@@ -1,4 +1,6 @@
-from queue import Queue
+from enum import Enum
+import queue
+import random
 
 import pika
 import atexit
@@ -171,10 +173,11 @@ class PlayerState:
         self.boundary = boundary
         self.logger = setup_logging('{}.state'.format(player_name))
 
-        self.lat = 0
-        self.long = 0
-        self.queue = Queue.queue()
+        self.lat = boundary.left + (random.betavariate(2, 2) * (boundary.right - boundary.left))
+        self.long = boundary.bottom + (random.betavariate(2, 2) * (boundary.top - boundary.bottom))
+        self.queue = queue.Queue()
 
+        self.logger.debug('starting at lat=%s, long=%s', self.lat, self.long)
         self.logger.debug('initiated')
 
     def move_to(self, lat, long):
