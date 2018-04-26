@@ -1,10 +1,9 @@
 import random
 import time
-from datetime import datetime
 import atexit
 
 from mq import RabbitMQ
-from base import setup_logging, AccidentLocation
+from base import setup_logging, AccidentLocation, AccidentPayload
 
 
 class AccidentRetriever:
@@ -55,16 +54,3 @@ class RandomAccidentRetriever(AccidentRetriever):
     @staticmethod
     def publish(payload):
         raise NotImplementedError
-
-
-class AccidentPayload:
-    def __init__(self, boundary, location):
-        self.boundary = boundary
-        self.location = location
-
-    def to_dict(self):
-        return {
-            'utc_timestamp': datetime.utcnow().timestamp(),
-            'boundary': self.boundary.to_dict(),
-            'accident': self.location.to_dict()
-        }

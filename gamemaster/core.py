@@ -12,9 +12,10 @@ import sys
 import threading
 import time
 
-from deployment.core import Action
 from mq import RabbitMQ
-from base import setup_logging, deserialize_message, AccidentLocation, Boundary
+from base import setup_logging, deserialize_message, Boundary, AccidentDeployment, PlayerInstruction
+
+UPDATE_INTERVAL_IN_SECS = 3
 
 
 class GameMaster:
@@ -91,26 +92,26 @@ class Player(Process):
         super(Player, self).__init__(target=self.consume, daemon=True)
         self.group_uuid = group_uuid
         self.player_id = player_id
+        self.boundary = boundary
         self.object_name = '{}.player{}'.format(group_uuid, player_id)
         self.queue_name = self.object_name
-        self.boundary = boundary
 
         self.logger = setup_logging(self.object_name)
 
         self.state = PlayerState(self.object_name, boundary)
+        self.job_queue = queue.Queue()
 
         self.logger.debug('initiated')
 
     def handle(self, message):
         self.logger.debug('handling message=%r', message)
 
-        action = Action(message['action'])
+        action = PlayerInstruction(message['action'])
         response = {'state': 'ok'}
 
-        if action == Action.GO:
-            payload = message['payload']
-            self.state.move_to(payload['accident']['lat'], payload['accident']['long'])
-        elif action == Action.WHERE:
+        if action == PlayerInstruction.GO:
+            self.queue_destination(AccidentDeployment.from_dict(message))
+        elif action == PlayerInstruction.WHERE:
             response['player'] = {
                 'lat': self.state.lat,
                 'long': self.state.long
@@ -130,7 +131,13 @@ class Player(Process):
     def update(self):
         while True:
             self.logger.debug('update')
-            time.sleep(3)
+            time.sleep(UPDATE_INTERVAL_IN_SECS)
+
+    def queue_destination(self, deployment):
+        if not type(deployment) == AccidentDeployment:
+            raise ValueError('not a AccidentDeployment object')
+
+        self.job_queue.put(deployment)
 
     def consume(self):
         connection = RabbitMQ.setup_connection()
@@ -173,7 +180,7 @@ class Status(Enum):
 
 class PlayerState:
     condition = threading.Condition()
-    
+
     def __init__(self, player_name, boundary):
         self.player_name = player_name
         self.boundary = boundary
@@ -181,7 +188,6 @@ class PlayerState:
 
         self.lat = boundary.left + (random.betavariate(2, 2) * (boundary.right - boundary.left))
         self.long = boundary.bottom + (random.betavariate(2, 2) * (boundary.top - boundary.bottom))
-        self.queue = queue.Queue()
 
         self.logger.debug('starting at lat=%s, long=%s', self.lat, self.long)
         self.logger.debug('initiated')
@@ -196,12 +202,6 @@ class PlayerState:
 
         self.condition.notify_all()
         self.condition.release()
-
-    def queue_destination(self, accident):
-        if not type(accident) == AccidentLocation:
-            raise ValueError('not a AccidentLocation object')
-
-        self.queue.put(accident)
 
 
 if __name__ == "__main__":

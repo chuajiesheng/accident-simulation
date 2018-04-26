@@ -2,8 +2,8 @@ import time
 import requests
 import json
 
-from publisher.core import AccidentRetriever, AccidentPayload
-from base import ServiceError, ServicePayloadError, AccidentLocation, Boundary
+from publisher.core import AccidentRetriever
+from base import ServiceError, ServicePayloadError, AccidentLocation, Boundary, AccidentPayload
 from base import setup_logging
 
 

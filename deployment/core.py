@@ -4,16 +4,9 @@ import uuid
 import pika
 import json
 import functools
-from enum import Enum
-from datetime import datetime
 
 from mq import RabbitMQ
-from base import setup_logging, StoppableThread, deserialize_message
-
-
-class Action(Enum):
-    WHERE = 'where'
-    GO = 'go'
+from base import setup_logging, StoppableThread, deserialize_message, AccidentPayload, AccidentDeployment
 
 
 class DeploymentMaster:
@@ -78,7 +71,7 @@ class DeploymentMaster:
                 try:
                     msg = self.message_queue.get(block=False)
                     self.logger.debug("message=%r", msg)
-                    self.decide(msg)
+                    self.decide(AccidentPayload.from_dict(msg))
                 except queue.Empty:
                     continue
 
@@ -94,13 +87,9 @@ class DeploymentMaster:
 
     def tell(self, player, action, payload):
         player_queue = '{}.player{}'.format(self.team_uuid, player)
-        self.logger.debug('telling player%s to %r to %r', player, action, payload)
+        self.logger.debug('telling player%s to %r to %r', player, action, payload.to_dict())
 
-        message = {
-            'action': action.value,
-            'payload': payload,
-            'utc_decision_time': datetime.utcnow().timestamp()
-        }
+        deployment_decision = AccidentDeployment(action, payload).to_dict()
 
         with RabbitMQ.setup_connection() as connection:
             channel = connection.channel()
@@ -120,7 +109,7 @@ class DeploymentMaster:
                                   routing_key=player_queue,
                                   properties=pika.BasicProperties(reply_to=callback_queue,
                                                                   correlation_id=corr_id),
-                                  body=json.dumps(message))
+                                  body=json.dumps(deployment_decision))
 
             self.logger.debug('waiting to process event')
             while self.team_detail is None:

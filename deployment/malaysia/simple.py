@@ -1,7 +1,7 @@
 import random
 
-from base import setup_logging, Boundary
-from deployment.core import DeploymentMaster, Action
+from base import setup_logging, Boundary, PlayerInstruction
+from deployment.core import DeploymentMaster
 
 
 class SimpleKlangValleyDeploymentMaster(DeploymentMaster):
@@ -12,7 +12,7 @@ class SimpleKlangValleyDeploymentMaster(DeploymentMaster):
 
     def decide(self, payload):
         player = random.randrange(self.player_count)
-        self.tell(player, Action.GO, payload)
+        self.tell(player, PlayerInstruction.GO, payload)
 
 
 if __name__ == "__main__":
