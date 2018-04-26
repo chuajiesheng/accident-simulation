@@ -130,7 +130,7 @@ class Player(Process):
 
     def update(self):
         while True:
-            self.logger.debug('update')
+            self.logger.debug('heartbeat')
             time.sleep(UPDATE_INTERVAL_IN_SECS)
 
     def queue_destination(self, deployment):
