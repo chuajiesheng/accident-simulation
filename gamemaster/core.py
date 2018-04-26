@@ -1,3 +1,5 @@
+from queue import Queue
+
 import pika
 import atexit
 import json
@@ -162,8 +164,10 @@ class PlayerState:
     def __init__(self, player_name):
         self.player_name = player_name
         self.logger = setup_logging('{}.state'.format(player_name))
+
         self.lat = 0
         self.long = 0
+        self.queue = Queue.queue()
 
         self.logger.debug('initiated')
 
@@ -177,6 +181,12 @@ class PlayerState:
 
         self.condition.notify_all()
         self.condition.release()
+
+    def queue_destination(self, accident):
+        if not type(accident) == AccidentLocation:
+            raise ValueError('not a AccidentLocation object')
+
+        self.queue.put(accident)
 
 
 if __name__ == "__main__":
