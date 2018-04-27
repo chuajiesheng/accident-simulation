@@ -6,7 +6,7 @@ from base import setup_logging, Boundary
 
 class KlangValleyRandomAccidentRetriever(RandomAccidentRetriever):
     def __init__(self):
-        boundary = Boundary(3.870733, 100.711638, 2.533530, 101.970674)
+        boundary = Boundary(3.398051, 101.433717, 2.776582, 101.995776)
         interval = 5
         super(KlangValleyRandomAccidentRetriever, self).__init__(boundary, interval)
         self.logger = setup_logging('KlangValleyRandomAccidentRetriever')
