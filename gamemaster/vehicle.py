@@ -14,9 +14,6 @@ def split(durations, distances, coordinates, interval=1):
     assert len_durations == len_distances
     assert len_distances == len(coordinates)
 
-    total_durations = sum(durations)
-    total_distances = sum(distances)
-
     rolling_duration = [None] * len_durations
     for i in range(len_durations):
         rolling_duration[i] = round(sum(durations[0:i + 1]), 1)
@@ -29,7 +26,6 @@ def split(durations, distances, coordinates, interval=1):
 
     no_of_steps = round(rolling_duration[-1] * 10)
     steps = [None] * no_of_steps
-    print('#steps=', len(steps))
 
     s = 0
     for i in range(no_of_steps):
@@ -117,7 +113,6 @@ def driving_by_car(src, dest, interval=1):
     url = OSRM_DRIVING_URL.format(src=src, dest=dest)
     querystring = {'overview': 'full', 'alternatives': 'false', 'steps': 'true', 'hints': '', 'geometries': 'geojson',
                    'annotations': 'true'}
-    print('url=', url)
 
     headers = {
         'User-Agent': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:60.0) Gecko/20100101 Firefox/60.0",
@@ -137,11 +132,7 @@ def driving_by_car(src, dest, interval=1):
     payload = json.loads(data, encoding='utf-8')
 
     coordinates = payload['routes'][0]['geometry']['coordinates']
-    print('#coordinates=', len(coordinates))
-    # print(coordinates)
-
     legs = payload['routes'][0]['legs']
-    print('#legs=', len(legs))
 
     expected_duration = payload['routes'][0]['duration']
     expected_distance = payload['routes'][0]['distance']
@@ -161,9 +152,6 @@ def driving_by_car(src, dest, interval=1):
     duration_breakdown = annotation['duration']
     duration_breakdown.insert(0, 0)
 
-    print('#distance_breakdown=', len(distance_breakdown))
-    print('#duration_breakdown=', len(duration_breakdown))
-
     return split(distance_breakdown, duration_breakdown, coordinates, interval)
 
 
@@ -175,4 +163,5 @@ dest = {
     'lat': '1.2781208',
     'long': '103.850805851355'
 }
-driving_by_car(src, dest, 5)
+plot = driving_by_car(src, dest, 5)
+print(plot)
