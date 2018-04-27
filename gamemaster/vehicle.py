@@ -145,55 +145,26 @@ def driving_by_car(src, dest, interval=1):
 
     expected_duration = payload['routes'][0]['duration']
     expected_distance = payload['routes'][0]['distance']
+    assert len(legs) == 1
 
-    for leg in legs:
-        annotation = leg['annotation']
-        distance = leg['distance']
-        duration = leg['duration']
+    leg = legs[0]
+    annotation = leg['annotation']
+    distance = leg['distance']
+    duration = leg['duration']
 
-        assert duration == expected_duration
-        assert distance == expected_distance
+    assert duration == expected_duration
+    assert distance == expected_distance
 
-        distance_breakdown = annotation['distance']
-        distance_breakdown.insert(0, 0)
+    distance_breakdown = annotation['distance']
+    distance_breakdown.insert(0, 0)
 
-        duration_breakdown = annotation['duration']
-        duration_breakdown.insert(0, 0)
+    duration_breakdown = annotation['duration']
+    duration_breakdown.insert(0, 0)
 
-        print('#distance_breakdown=', len(distance_breakdown))
-        print('#duration_breakdown=', len(duration_breakdown))
+    print('#distance_breakdown=', len(distance_breakdown))
+    print('#duration_breakdown=', len(duration_breakdown))
 
-        by_interval = split(distance_breakdown, duration_breakdown, coordinates, interval)
-        print(by_interval)
-        print('#by_interval=', len(by_interval))
-
-        leg_coordinates = []
-        leg_total_distance = 0
-        leg_total_duration = 0
-
-        for step in leg['steps']:
-            coordinates = step['geometry']['coordinates']
-            duration = float(step['duration'])
-            distance = float(step['distance'])
-
-            if len(leg_coordinates) == 0:
-                leg_coordinates.extend(coordinates)
-            elif distance == 0:
-                continue
-            else:
-                leg_coordinates.extend(coordinates[1:])
-
-            leg_total_distance += float(distance)
-            leg_total_duration += float(duration)
-
-        print('#leg_coordinates=', len(leg_coordinates))
-        print('#leg_total_distance=', leg_total_distance)
-        print('#leg_total_duration=', leg_total_duration)
-
-        # print(leg_coordinates)
-
-    print('expected_duration=', expected_duration)
-    print('expected_distance=', expected_distance)
+    return split(distance_breakdown, duration_breakdown, coordinates, interval)
 
 
 src = {
