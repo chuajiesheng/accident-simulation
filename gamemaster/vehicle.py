@@ -1,5 +1,4 @@
 import json
-import math
 import requests
 
 from base import ServiceError
@@ -111,6 +110,7 @@ def split(durations, distances, coordinates, interval=1):
 
 def driving_by_car(src, dest, interval=1):
     url = OSRM_DRIVING_URL.format(src=src, dest=dest)
+    print(url)
     querystring = {'overview': 'full', 'alternatives': 'false', 'steps': 'true', 'hints': '', 'geometries': 'geojson',
                    'annotations': 'true'}
 
@@ -155,13 +155,14 @@ def driving_by_car(src, dest, interval=1):
     return split(distance_breakdown, duration_breakdown, coordinates, interval)
 
 
-src = {
-    'lat': '1.4361274',
-    'long': '103.7721054'
-}
-dest = {
-    'lat': '1.2781208',
-    'long': '103.850805851355'
-}
-plot = driving_by_car(src, dest, 5)
-print(plot)
+if __name__ == "__main__":
+    src = {
+        'lat': '1.4361274',
+        'long': '103.7721054'
+    }
+    dest = {
+        'lat': '1.2781208',
+        'long': '103.850805851355'
+    }
+    plot = driving_by_car(src, dest, 5)
+    print(plot)

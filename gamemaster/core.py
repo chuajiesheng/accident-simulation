@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import Enum
 import queue
 import random
@@ -12,6 +13,7 @@ import sys
 import threading
 import time
 
+from gamemaster.vehicle import driving_by_car
 from mq import RabbitMQ
 from base import setup_logging, deserialize_message, Boundary, AccidentDeployment, PlayerInstruction
 
@@ -131,6 +133,17 @@ class Player(Process):
     def update(self):
         while True:
             self.logger.debug('heartbeat')
+
+            if not self.job_queue.empty():
+                job = self.job_queue.get()
+                self.logger.debug('job=%r', job.to_dict())
+
+                source = self.state.current_location()
+                destination = job.payload.location.to_dict()
+                plan = driving_by_car(source, destination)
+                self.state.travel_to(plan)
+
+            self.state.update()
             time.sleep(UPDATE_INTERVAL_IN_SECS)
 
     def queue_destination(self, deployment):
@@ -186,11 +199,18 @@ class PlayerState:
         self.boundary = boundary
         self.logger = setup_logging('{}.state'.format(player_name))
 
+        self.status = Status.IDLE
+        self.status_since = self.now()
         self.lat = boundary.left + (random.betavariate(2, 2) * (boundary.right - boundary.left))
         self.long = boundary.bottom + (random.betavariate(2, 2) * (boundary.top - boundary.bottom))
+        self.plan = None
 
         self.logger.debug('starting at lat=%s, long=%s', self.lat, self.long)
         self.logger.debug('initiated')
+
+    @staticmethod
+    def now():
+        return datetime.utcnow().timestamp()
 
     def move_to(self, lat, long):
         self.condition.acquire()
@@ -202,6 +222,27 @@ class PlayerState:
 
         self.condition.notify_all()
         self.condition.release()
+
+    def current_location(self):
+        self.condition.acquire()
+
+        response = {'lat': self.lat, 'long': self.long}
+
+        self.condition.notify_all()
+        self.condition.release()
+
+        return response
+
+    def travel_to(self, plan):
+        self.status = Status.EN_ROUTE
+        self.status_since = self.now()
+        self.plan = plan
+
+    def update(self):
+        if self.status == Status.EN_ROUTE:
+            sec_lapsed = self.now() - self.status_since
+            step = self.plan[round(sec_lapsed)]
+            self.move_to(step['lat']['now'], step['long']['now'])
 
 
 if __name__ == "__main__":
