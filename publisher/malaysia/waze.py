@@ -13,7 +13,7 @@ class KlangValleyAccidentRetriever(AccidentRetriever):
     TO_MS = 1000
 
     def __init__(self):
-        boundary = Boundary(100.711638, 3.870733, 101.970674, 2.533530)
+        boundary = Boundary(3.870733, 100.711638, 2.533530, 101.970674)
         interval = 60 * 10
         super(KlangValleyAccidentRetriever, self).__init__(boundary, interval)
         self.logger = setup_logging('KlangValleyAccidentRetriever')
