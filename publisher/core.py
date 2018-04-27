@@ -42,8 +42,8 @@ class RandomAccidentRetriever(AccidentRetriever):
     def watch(self):
         try:
             while True:
-                lat = self.boundary.bottom + self.r.random() * (self.boundary.top - self.boundary.bottom)
-                long = self.boundary.left + self.r.random() * (self.boundary.right - self.boundary.left)
+                lat = self.boundary.left + self.r.random() * (self.boundary.right - self.boundary.left)
+                long = self.boundary.bottom + self.r.random() * (self.boundary.top - self.boundary.bottom)
 
                 self.publish(AccidentPayload(self.boundary, AccidentLocation(lat, long)))
                 self.logger.debug('Sleep secs=%s', self.interval)
