@@ -134,7 +134,7 @@ class Player(Process):
         while True:
             self.logger.debug('heartbeat')
 
-            if not self.job_queue.empty():
+            if self.state.is_idle() and not self.job_queue.empty():
                 job = self.job_queue.get()
                 self.logger.debug('job=%r', job.to_dict())
 
@@ -151,6 +151,7 @@ class Player(Process):
             raise ValueError('not a AccidentDeployment object')
 
         self.job_queue.put(deployment)
+        self.logger.debug('queue size=%s', self.job_queue.qsize())
 
     def consume(self):
         connection = RabbitMQ.setup_connection()
@@ -188,6 +189,7 @@ class Player(Process):
 class Status(Enum):
     EN_ROUTE = 'en_route'
     IDLE = 'idle'
+    ASSESSING = 'assessing'
     BREAK = 'break'
 
 
@@ -203,6 +205,8 @@ class PlayerState:
 
         self.status = Status.IDLE
         self.status_since = self.now()
+        self.completion_time = self.now()
+
         self.lat = boundary.left + (random.betavariate(2, 2) * (boundary.right - boundary.left))
         self.long = boundary.bottom + (random.betavariate(2, 2) * (boundary.top - boundary.bottom))
         self.plan = None
@@ -239,15 +243,39 @@ class PlayerState:
         self.status = Status.EN_ROUTE
         self.status_since = self.now()
         self.plan = plan
+        self.completion_time = self.now() + len(plan)
+
+    def assess_accident(self):
+        self.status = Status.ASSESSING
+        self.status_since = self.now()
+        self.plan = None
+        self.completion_time = self.now() + round(random.normalvariate(5, 1), 1)
+
+    def idle(self):
+        self.status = Status.IDLE
+        self.status_since = self.now()
+        self.plan = None
+        self.completion_time = self.now()
+
+    def is_idle(self):
+        return self.status == Status.IDLE
 
     def update(self):
         self.logger.debug('status=%r', self.status)
         sec_lapsed = round(self.now() - self.status_since) * self.SPEED
 
         if self.status == Status.EN_ROUTE:
-            sec_lapsed = self.now() - self.status_since
-            step = self.plan[round(sec_lapsed)]
+            if sec_lapsed >= len(self.plan):
+                self.assess_accident()
+                return
+
+            step = self.plan[sec_lapsed]
+            self.logger.debug('sec_lapsed=%s, step_left=%s, step=%s', sec_lapsed, len(self.plan) - sec_lapsed, step)
             self.move_to(step['lat']['now'], step['long']['now'])
+
+        if self.status == Status.ASSESSING:
+            if self.completion_time > self.now():
+                self.idle()
 
 
 if __name__ == "__main__":
