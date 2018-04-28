@@ -192,6 +192,8 @@ class Status(Enum):
 
 
 class PlayerState:
+    SPEED = 100
+
     condition = threading.Condition()
 
     def __init__(self, player_name, boundary):
@@ -239,6 +241,9 @@ class PlayerState:
         self.plan = plan
 
     def update(self):
+        self.logger.debug('status=%r', self.status)
+        sec_lapsed = round(self.now() - self.status_since) * self.SPEED
+
         if self.status == Status.EN_ROUTE:
             sec_lapsed = self.now() - self.status_since
             step = self.plan[round(sec_lapsed)]
