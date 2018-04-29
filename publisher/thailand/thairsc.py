@@ -1,6 +1,6 @@
 import time
 from collections import defaultdict, namedtuple
-
+import argparse
 import requests
 import json
 from datetime import datetime, timedelta
@@ -12,11 +12,14 @@ from base import setup_logging
 
 class GreaterBangkokAccidentRetriever(AccidentRetriever):
 
-    def __init__(self):
+    def __init__(self, year):
         boundary = Boundary(13.381014, 100.950397, 14.284958, 99.869143)
         interval = 60 * 1
         super(GreaterBangkokAccidentRetriever, self).__init__(boundary, interval)
         self.logger = setup_logging('GreaterBangkokAccidentRetriever')
+        
+        self.year = year
+        self.logger.debug('using year=%s', year)
 
     @staticmethod
     def get_alerts(payload):
@@ -50,12 +53,12 @@ class GreaterBangkokAccidentRetriever(AccidentRetriever):
         accident_lookup = defaultdict(list)
 
         alerts = {
-            'samut_sakhon': self.get_alerts('provid=%E0%B8%AA%E0%B8%9B&ampid=1&years=2017'),
-            'nakhon_pathom': self.get_alerts('provid=%E0%B8%99%E0%B8%90&ampid=1&years=2017'),
-            'nonthaburi': self.get_alerts('provid=%E0%B8%99%E0%B8%9A&ampid=1&years=2017'),
-            'bangkok': self.get_alerts('provid=%E0%B8%81%E0%B8%97&ampid=1&years=2017'),
-            'pathum_thani': self.get_alerts('provid=%E0%B8%9B%E0%B8%97&ampid=1&years=2017'),
-            'samutprakan': self.get_alerts('provid=%E0%B8%AA%E0%B8%9B&ampid=1&years=2017'),
+            'samut_sakhon': self.get_alerts('provid=%E0%B8%AA%E0%B8%9B&ampid=1&years={}'.format(self.year)),
+            'nakhon_pathom': self.get_alerts('provid=%E0%B8%99%E0%B8%90&ampid=1&years={}'.format(self.year)),
+            'nonthaburi': self.get_alerts('provid=%E0%B8%99%E0%B8%9A&ampid=1&years={}'.format(self.year)),
+            'bangkok': self.get_alerts('provid=%E0%B8%81%E0%B8%97&ampid=1&years={}'.format(self.year)),
+            'pathum_thani': self.get_alerts('provid=%E0%B8%9B%E0%B8%97&ampid=1&years={}'.format(self.year)),
+            'samutprakan': self.get_alerts('provid=%E0%B8%AA%E0%B8%9B&ampid=1&years={}'.format(self.year)),
         }
 
         for k in alerts:
@@ -96,6 +99,14 @@ class GreaterBangkokAccidentRetriever(AccidentRetriever):
 
 
 if __name__ == "__main__":
-    retriever = GreaterBangkokAccidentRetriever()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("year", help='use the accident dataset from the specific year. if not integer provided, default to 2017')
+    args = parser.parse_args()
+    try:
+        year = int(args.year)
+    except ValueError:
+        year = 2017
+
+    retriever = GreaterBangkokAccidentRetriever(year)
     retriever.watch()
 
