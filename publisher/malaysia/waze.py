@@ -42,7 +42,7 @@ class KlangValleyAccidentRetriever(AccidentRetriever):
         payload = json.loads(data, encoding='utf-8')
 
         if 'alerts' not in payload.keys():
-            raise ServicePayloadError('Missing dtLatlng attributes.')
+            raise ServicePayloadError('Missing alerts attributes.')
 
         return payload['alerts']
 
