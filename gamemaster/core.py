@@ -249,7 +249,8 @@ class PlayerState:
         self.status = Status.ASSESSING
         self.status_since = self.now()
         self.plan = None
-        self.completion_time = self.now() + round(random.normalvariate(5, 1), 1)
+        assessing_time = round(random.normalvariate(15, 5), 1) * 60
+        self.completion_time = self.now() + assessing_time
 
     def idle(self):
         self.status = Status.IDLE
@@ -261,21 +262,20 @@ class PlayerState:
         return self.status == Status.IDLE
 
     def update(self):
-        self.logger.debug('status=%r', self.status)
         sec_lapsed = round(self.now() - self.status_since) * self.SPEED
+        time_left = self.completion_time - self.now() - sec_lapsed
+        self.logger.debug('status=%r, lapsed=%ssec, time_left=%ssec', self.status, sec_lapsed, time_left)
 
-        if self.status == Status.EN_ROUTE:
-            if sec_lapsed >= len(self.plan):
+        if time_left <= 0:
+            if self.status == Status.EN_ROUTE:
                 self.assess_accident()
-                return
-
-            step = self.plan[sec_lapsed]
-            self.logger.debug('sec_lapsed=%s, step_left=%s, step=%s', sec_lapsed, len(self.plan) - sec_lapsed, step)
-            self.move_to(step['lat']['now'], step['long']['now'])
-
-        if self.status == Status.ASSESSING:
-            if self.completion_time > self.now():
+            elif self.status == Status.ASSESSING:
                 self.idle()
+        else:
+            if self.status == Status.EN_ROUTE:
+                step = self.plan[sec_lapsed]
+                self.logger.debug('step=%s', step)
+                self.move_to(step['lat']['now'], step['long']['now'])
 
 
 if __name__ == "__main__":
