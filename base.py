@@ -104,10 +104,10 @@ class AccidentPayload:
 
         return p
 
-    def __init__(self, boundary, location):
+    def __init__(self, boundary, location, utc_timestamp=datetime.utcnow().timestamp()):
         self.boundary = boundary
         self.location = location
-        self.utc_timestamp = datetime.utcnow().timestamp()
+        self.utc_timestamp = utc_timestamp
 
     def to_dict(self):
         return {
