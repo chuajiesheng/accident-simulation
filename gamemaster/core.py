@@ -77,9 +77,8 @@ class GameMaster:
             self.logger.debug('KeyboardInterrupt')
         finally:
             def terminate_group(players):
-                self.logger.debug('terminating pids=%r', list(map(lambda player: player.pid, players)))
-                self.logger.debug('terminating is_alive=%r', list(map(lambda player: player.is_alive(), players)))
-                deque(map(lambda player: player.terminate(), players), maxlen=0)
+                self.logger.debug('waiting for pids=%r', list(map(lambda player: player.pid, players)))
+                deque(map(lambda player: player.join(), players), maxlen=0)
 
             for k in self.players.keys():
                 terminate_group(self.players[k])
@@ -156,12 +155,6 @@ class Player(Process):
     def consume(self):
         connection = RabbitMQ.setup_connection()
 
-        def close_connection():
-            self.logger.debug('Closing connection')
-            connection.close()
-
-        atexit.register(close_connection)
-
         channel = connection.channel()
         channel.queue_declare(queue=self.queue_name)
         channel.basic_qos(prefetch_count=1)
@@ -182,6 +175,9 @@ class Player(Process):
             self.logger.debug("unexpected error=%s", sys.exc_info()[0])
         finally:
             channel.stop_consuming()
+            self.logger.debug('deleting queue')
+            channel.queue_delete(queue=self.queue_name)
+            self.logger.debug('closing connection')
             connection.close()
             self.logger.debug('stopping')
 
