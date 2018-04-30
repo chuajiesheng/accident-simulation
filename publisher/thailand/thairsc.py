@@ -65,8 +65,15 @@ class GreaterBangkokAccidentRetriever(AccidentRetriever):
             area = alerts[k]
             self.logger.debug('#accident in %s=%s', k, len(area))
             for i in range(len(area)):
+                def to_current_year(d):
+                    years_behind = datetime.now().year - d.year
+                    return d + timedelta(days=years_behind * 365)
+
+                def to_utc(d):
+                    return d - timedelta(hours=7)
+
                 accident = area[i]
-                utc_accdate = datetime.strptime(accident['accdate'], "%d/%m/%Y %H:%M").replace(year=datetime.now().year) - timedelta(hours=7)
+                utc_accdate = to_utc(to_current_year(datetime.strptime(accident['accdate'], "%d/%m/%Y %H:%M")))
                 utc_timestamp = utc_accdate.timestamp()
 
                 timestamp = Timestamp(month=utc_accdate.month, day=utc_accdate.day,
