@@ -66,7 +66,7 @@ class GreaterBangkokAccidentRetriever(AccidentRetriever):
             self.logger.debug('#accident in %s=%s', k, len(area))
             for i in range(len(area)):
                 accident = area[i]
-                utc_accdate = datetime.strptime(accident['accdate'], "%d/%m/%Y %H:%M") - timedelta(hours=7)
+                utc_accdate = datetime.strptime(accident['accdate'], "%d/%m/%Y %H:%M").replace(year=datetime.now().year) - timedelta(hours=7)
                 utc_timestamp = utc_accdate.timestamp()
 
                 timestamp = Timestamp(month=utc_accdate.month, day=utc_accdate.day,
