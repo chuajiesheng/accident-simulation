@@ -147,3 +147,13 @@ class AccidentDeployment:
             'payload': self.payload.to_dict(),
             'utc_decision_time': self.utc_decision_time,
         }
+
+
+class RpcCall:
+    body = None
+
+    def __init__(self, correlation_id):
+        self.correlation_id = correlation_id
+
+    def completed(self):
+        return self.body is not None

@@ -1,16 +1,16 @@
 import time
 import queue
 import uuid
+
 import pika
 import json
 import functools
 
 from mq import RabbitMQ
-from base import setup_logging, StoppableThread, deserialize_message, AccidentPayload, AccidentDeployment
+from base import setup_logging, StoppableThread, deserialize_message, AccidentPayload, AccidentDeployment, RpcCall
 
 
 class DeploymentMaster:
-    rpc_response = None
     boundary = None
 
     def __init__(self):
@@ -30,13 +30,14 @@ class DeploymentMaster:
             callback_queue = result.method.queue
 
             corr_id = str(uuid.uuid4())
+            rpc = RpcCall(corr_id)
 
-            def on_response(parent, correlation_id, ch, method, props, body):
-                if correlation_id == props.correlation_id:
-                    parent.rpc_response = body
-                    parent.logger.debug('on_response, response=%r', body)
+            def on_response(rpc, logger, ch, method, props, body):
+                if rpc.correlation_id == props.correlation_id:
+                    rpc.body = body
+                    logger.debug('on_response, response=%r', body)
 
-            channel.basic_consume(functools.partial(on_response, self, corr_id), no_ack=True, queue=callback_queue)
+            channel.basic_consume(functools.partial(on_response, rpc, self.logger), no_ack=True, queue=callback_queue)
             channel.basic_publish(exchange='',
                                   routing_key=RabbitMQ.game_master_queue_name(),
                                   properties=pika.BasicProperties(reply_to=callback_queue,
@@ -44,11 +45,11 @@ class DeploymentMaster:
                                   body=json.dumps(payload))
 
             self.logger.debug('waiting to process event')
-            while self.rpc_response is None:
+            while not rpc.completed():
                 connection.process_data_events()
 
-            self.logger.debug('response=%r', self.rpc_response)
-            return self.rpc_response
+            self.logger.debug('response=%r', rpc.body)
+            return rpc.body
 
     def start(self):
         self.logger.debug('request team')
@@ -102,13 +103,14 @@ class DeploymentMaster:
             callback_queue = result.method.queue
 
             corr_id = str(uuid.uuid4())
+            rpc = RpcCall(corr_id)
 
-            def on_response(parent, correlation_id, ch, method, props, body):
-                if correlation_id == props.correlation_id:
-                    parent.rpc_response = body
-                    parent.logger.debug('on_response, response=%r', body)
+            def on_response(rpc, logger, ch, method, props, body):
+                if rpc.correlation_id == props.correlation_id:
+                    rpc.body = body
+                    logger.debug('on_response, response=%r', body)
 
-            channel.basic_consume(functools.partial(on_response, self, corr_id), no_ack=True, queue=callback_queue)
+            channel.basic_consume(functools.partial(on_response, rpc, self.logger), no_ack=True, queue=callback_queue)
             channel.basic_publish(exchange='',
                                   routing_key=player_queue,
                                   properties=pika.BasicProperties(reply_to=callback_queue,
@@ -116,10 +118,10 @@ class DeploymentMaster:
                                   body=json.dumps(deployment_decision))
 
             self.logger.debug('waiting to process event')
-            while self.rpc_response is None:
+            while not rpc.completed():
                 connection.process_data_events()
 
-            self.logger.debug('response=%r', self.rpc_response)
+            self.logger.debug('response=%r', rpc.body)
 
 
 class DeploymentEventConsumer(StoppableThread):
