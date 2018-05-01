@@ -17,6 +17,10 @@ class MissingConfigurationError(Exception):
     pass
 
 
+class StopConsuming(Exception):
+    pass
+
+
 def setup_logging(name):
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)

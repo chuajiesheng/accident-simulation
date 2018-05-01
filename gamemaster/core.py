@@ -1,3 +1,4 @@
+import signal
 from datetime import datetime
 from enum import Enum
 import queue
@@ -15,7 +16,7 @@ import time
 
 from gamemaster.vehicle import driving_by_car
 from mq import RabbitMQ
-from base import setup_logging, deserialize_message, Boundary, AccidentDeployment, PlayerInstruction
+from base import setup_logging, deserialize_message, Boundary, AccidentDeployment, PlayerInstruction, StopConsuming
 
 UPDATE_INTERVAL_IN_SECS = 3
 
@@ -41,22 +42,48 @@ class GameMaster:
         self.channel = channel
 
     def on_request(self, channel, method, props, body):
+        def create_team(uuid, count, boundary):
+            self.logger.debug('spawning team=%r, size=%s within_boundary=%r',
+                              uuid, count, boundary.to_dict())
+            for i in range(count):
+                if uuid not in self.players.keys():
+                    self.players[uuid] = []
+
+                player = Player(uuid, i, boundary)
+                player.start()
+                self.players[uuid].append(player)
+
+            return 'created'
+
+        def terminate_team(uuid):
+            self.logger.debug('terminating team=%r', uuid)
+            players = self.players.get(uuid) or []
+
+            def terminate(player):
+                self.logger.debug('terminating process=%r', player.pid)
+                player.terminate()
+                self.logger.debug('waiting process=%r', player.pid)
+                player.join()
+                return player.is_alive()
+
+            if all(map(lambda p: not terminate(p), players)):
+                self.logger.debug('remove team=%r from players', uuid)
+                self.players.pop(uuid, None)
+
+            return 'completed'
+
         payload = json.loads(body)
+        request_type = payload['type']
 
-        response = 'ok'
-        team_uuid = payload['team_uuid']
-        player_count = payload['player_count']
-        team_boundary = Boundary.from_dict(payload['team_boundary'])
-
-        self.logger.debug('spawning team=%r, size=%s within_boundary=%r',
-                          team_uuid, player_count, team_boundary.to_dict())
-        for i in range(player_count):
-            if team_uuid not in self.players.keys():
-                self.players[team_uuid] = []
-
-            player = Player(team_uuid, i, team_boundary)
-            player.start()
-            self.players[team_uuid].append(player)
+        if request_type == 'request':
+            team_uuid = payload['team_uuid']
+            player_count = payload['player_count']
+            team_boundary = Boundary.from_dict(payload['team_boundary'])
+            response = create_team(team_uuid, player_count, team_boundary)
+        elif request_type == 'terminate':
+            response = terminate_team(payload['team_uuid'])
+        else:
+            response = 'ok'
 
         channel.basic_publish(exchange='',
                               routing_key=props.reply_to,
@@ -76,12 +103,10 @@ class GameMaster:
         except KeyboardInterrupt:
             self.logger.debug('KeyboardInterrupt')
         finally:
-            def terminate_group(players):
-                self.logger.debug('waiting for pids=%r', list(map(lambda player: player.pid, players)))
-                deque(map(lambda player: player.join(), players), maxlen=0)
-
             for k in self.players.keys():
-                terminate_group(self.players[k])
+                processes = self.players[k]
+                self.logger.debug('waiting for pids=%r', list(map(lambda player: player.pid, processes)))
+                deque(map(lambda player: player.join(), processes), maxlen=0)
 
         self.logger.debug('serve() completed')
 
@@ -153,33 +178,37 @@ class Player(Process):
         self.logger.debug('queue size=%s', self.job_queue.qsize())
 
     def consume(self):
-        connection = RabbitMQ.setup_connection()
+        with RabbitMQ.setup_connection() as connection, connection.channel() as channel:
+            channel.queue_declare(queue=self.queue_name)
+            channel.basic_qos(prefetch_count=1)
+            channel.basic_consume(self.handle_rpc_call, queue=self.queue_name)
 
-        channel = connection.channel()
-        channel.queue_declare(queue=self.queue_name)
-        channel.basic_qos(prefetch_count=1)
-        channel.basic_consume(self.handle_rpc_call, queue=self.queue_name)
+            self.logger.debug('binding to RabbitMQ with keys=%r', self.queue_name)
 
-        self.logger.debug('binding to RabbitMQ with keys=%r', self.queue_name)
+            update_thread = Thread(target=self.update, name='{}.update_thread'.format(self.object_name), daemon=True)
 
-        update_thread = Thread(target=self.update, name='{}.update_thread'.format(self.object_name), daemon=True)
+            def escape(signum, frame):
+                raise StopConsuming
 
-        try:
-            self.logger.debug('start update thread')
-            update_thread.start()
-            self.logger.debug('start consuming')
-            channel.start_consuming()
-        except KeyboardInterrupt:
-            self.logger.debug('KeyboardInterrupt')
-        except:
-            self.logger.debug("unexpected error=%s", sys.exc_info()[0])
-        finally:
-            channel.stop_consuming()
-            self.logger.debug('deleting queue')
-            channel.queue_delete(queue=self.queue_name)
-            self.logger.debug('closing connection')
-            connection.close()
-            self.logger.debug('stopping')
+            signal.signal(signal.SIGINT, escape)
+            signal.signal(signal.SIGTERM, escape)
+
+            try:
+                self.logger.debug('start update thread')
+                update_thread.start()
+                self.logger.debug('start consuming')
+                channel.start_consuming()
+            except StopConsuming:
+                self.logger.debug('StopConsuming')
+            except:
+                self.logger.debug("unexpected error=%s", sys.exc_info()[0])
+            finally:
+                channel.stop_consuming()
+                self.logger.debug('deleting queue')
+                channel.queue_delete(queue=self.queue_name)
+                self.logger.debug('closing connection')
+
+        self.logger.debug('finishing')
 
 
 class Status(Enum):
