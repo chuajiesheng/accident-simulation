@@ -11,7 +11,19 @@ from base import setup_logging, StoppableThread, deserialize_message, AccidentPa
 
 
 class DeploymentMaster:
+    PLAYER_RPC_TIMEOUT_SECS = 10
     boundary = None
+
+    @staticmethod
+    def _on_response(rpc, logger, ch, method, props, body):
+        if rpc.correlation_id == props.correlation_id:
+            rpc.body = body
+            logger.debug('on_response, response=%r', body)
+
+    @staticmethod
+    def _on_timeout(rpc, logger):
+        rpc.error = True
+        logger.debug('rpc timeout')
 
     def __init__(self):
         self.logger = setup_logging('DeploymentMaster')
@@ -32,12 +44,8 @@ class DeploymentMaster:
             corr_id = str(uuid.uuid4())
             rpc = RpcCall(corr_id)
 
-            def on_response(rpc, logger, ch, method, props, body):
-                if rpc.correlation_id == props.correlation_id:
-                    rpc.body = body
-                    logger.debug('on_response, response=%r', body)
-
-            channel.basic_consume(functools.partial(on_response, rpc, self.logger), no_ack=True, queue=callback_queue)
+            connection.add_timeout(self.PLAYER_RPC_TIMEOUT_SECS, functools.partial(self._on_timeout, rpc, self.logger))
+            channel.basic_consume(functools.partial(self._on_response, rpc, self.logger), no_ack=True, queue=callback_queue)
             channel.basic_publish(exchange='',
                                   routing_key=RabbitMQ.game_master_queue_name(),
                                   properties=pika.BasicProperties(reply_to=callback_queue,
@@ -48,7 +56,7 @@ class DeploymentMaster:
             while not rpc.completed():
                 connection.process_data_events()
 
-            self.logger.debug('response=%r', rpc.body)
+            self.logger.debug('error=%s, response=%r', rpc.error, rpc.body)
             return rpc.body
 
     def start(self):
@@ -78,7 +86,7 @@ class DeploymentMaster:
         except KeyboardInterrupt:
             self.logger.debug('KeyboardInterrupt')
         finally:
-            self.logger.debug('stopping deployment manager')
+            self.logger.debug('stopping player processes')
             self.game_master_rpc({
                 'type': 'terminate',
                 'team_uuid': self.team_uuid,
@@ -103,12 +111,8 @@ class DeploymentMaster:
             corr_id = str(uuid.uuid4())
             rpc = RpcCall(corr_id)
 
-            def on_response(rpc, logger, ch, method, props, body):
-                if rpc.correlation_id == props.correlation_id:
-                    rpc.body = body
-                    logger.debug('on_response, response=%r', body)
-
-            channel.basic_consume(functools.partial(on_response, rpc, self.logger), no_ack=True, queue=callback_queue)
+            connection.add_timeout(self.PLAYER_RPC_TIMEOUT_SECS, functools.partial(self._on_timeout, rpc, self.logger))
+            channel.basic_consume(functools.partial(self._on_response, rpc, self.logger), no_ack=True, queue=callback_queue)
             channel.basic_publish(exchange='',
                                   routing_key=player_queue,
                                   properties=pika.BasicProperties(reply_to=callback_queue,
@@ -119,7 +123,7 @@ class DeploymentMaster:
             while not rpc.completed():
                 connection.process_data_events()
 
-            self.logger.debug('response=%r', rpc.body)
+            self.logger.debug('error=%s, response=%r', rpc.error, rpc.body)
 
 
 class DeploymentEventConsumer(StoppableThread):

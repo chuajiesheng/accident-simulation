@@ -151,9 +151,10 @@ class AccidentDeployment:
 
 class RpcCall:
     body = None
+    error = False
 
     def __init__(self, correlation_id):
         self.correlation_id = correlation_id
 
     def completed(self):
-        return self.body is not None
+        return self.error or self.body is not None
