@@ -96,9 +96,7 @@ class DeploymentMaster:
 
         deployment_decision = AccidentDeployment(action, payload).to_dict()
 
-        with RabbitMQ.setup_connection() as connection:
-            channel = connection.channel()
-
+        with RabbitMQ.setup_connection() as connection, connection.channel() as channel:
             result = channel.queue_declare(exclusive=True)
             callback_queue = result.method.queue
 
