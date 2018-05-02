@@ -25,11 +25,11 @@ class DeploymentMaster:
         rpc.error = True
         logger.debug('rpc timeout')
 
-    def __init__(self):
+    def __init__(self, binding_keys):
         self.logger = setup_logging('DeploymentMaster')
 
         self.message_queue = queue.Queue()
-        self.deployment_manager = DeploymentEventConsumer(self.message_queue)
+        self.accident_event_consumer = AccidentEventConsumer(self.message_queue, binding_keys)
 
         self.team_uuid = str(uuid.uuid4())
         self.player_count = 5
@@ -69,12 +69,12 @@ class DeploymentMaster:
         })
 
         self.logger.debug('starting deployment manager')
-        self.deployment_manager.start()
+        self.accident_event_consumer.start()
 
         try:
             while True:
                 time.sleep(5)
-                self.logger.debug('deployment manager status=%s', self.deployment_manager.is_alive())
+                self.logger.debug('deployment manager status=%s', self.accident_event_consumer.is_alive())
                 self.logger.debug('empty_queue=%s', self.message_queue.empty())
                 try:
                     msg = self.message_queue.get(block=False)
@@ -92,8 +92,8 @@ class DeploymentMaster:
                 'team_uuid': self.team_uuid,
             })
             self.logger.debug('stopping deployment manager')
-            self.deployment_manager.stop()
-            self.deployment_manager.join()
+            self.accident_event_consumer.stop()
+            self.accident_event_consumer.join()
 
     def decide(self, payload):
         raise NotImplemented
@@ -126,11 +126,12 @@ class DeploymentMaster:
             self.logger.debug('error=%s, response=%r', rpc.error, rpc.body)
 
 
-class DeploymentEventConsumer(StoppableThread):
-    def __init__(self, message_queue):
-        super(DeploymentEventConsumer, self).__init__()
+class AccidentEventConsumer(StoppableThread):
+    def __init__(self, message_queue, binding_keys):
+        super(AccidentEventConsumer, self).__init__()
         self.message_queue = message_queue
-        self.logger = setup_logging('DeploymentEventConsumer')
+        self.logger = setup_logging('AccidentEventConsumer')
+        self.binding_keys = binding_keys
 
     def consume(self):
         connection = RabbitMQ.setup_connection()
@@ -140,8 +141,7 @@ class DeploymentEventConsumer(StoppableThread):
         result = channel.queue_declare(exclusive=True)
         queue_name = result.method.queue
 
-        binding_keys = ['malaysia.klang_valley']
-        for binding_key in binding_keys:
+        for binding_key in self.binding_keys:
             channel.queue_bind(exchange=RabbitMQ.accident_exchange_name(), queue=queue_name, routing_key=binding_key)
 
         self.logger.debug('binding to RabbitMQ')
