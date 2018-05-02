@@ -109,28 +109,7 @@ def split(durations, distances, coordinates, interval=1):
 
 
 def driving_by_car(src, dest, interval=1):
-    url = OSRM_DRIVING_URL.format(src=src, dest=dest)
-    print(url)
-    querystring = {'overview': 'full', 'alternatives': 'false', 'steps': 'true', 'hints': '', 'geometries': 'geojson',
-                   'annotations': 'true'}
-
-    headers = {
-        'User-Agent': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:60.0) Gecko/20100101 Firefox/60.0",
-        'Accept': "text/javascript",
-        'Accept-Encoding': "gzip, deflate, br",
-        'Accept-Language': "en-US,en;q=0.5",
-        'X-Requested-With': "XMLHttpRequest",
-        'Cache-Control': "no-cache"
-    }
-
-    response = requests.request("GET", url, headers=headers, params=querystring)
-
-    if response.status_code != 200:
-        raise ServiceError('HTTP {}'.format(response.status_code))
-
-    data = response.text
-    payload = json.loads(data, encoding='utf-8')
-
+    payload = ask_osrm(src, dest)
     coordinates = payload['routes'][0]['geometry']['coordinates']
     legs = payload['routes'][0]['legs']
 
@@ -153,6 +132,27 @@ def driving_by_car(src, dest, interval=1):
     duration_breakdown.insert(0, 0)
 
     return split(distance_breakdown, duration_breakdown, coordinates, interval)
+
+
+def ask_osrm(src, dest):
+    url = OSRM_DRIVING_URL.format(src=src, dest=dest)
+    print(url)
+    querystring = {'overview': 'full', 'alternatives': 'false', 'steps': 'true', 'hints': '', 'geometries': 'geojson',
+                   'annotations': 'true'}
+    headers = {
+        'User-Agent': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:60.0) Gecko/20100101 Firefox/60.0",
+        'Accept': "text/javascript",
+        'Accept-Encoding': "gzip, deflate, br",
+        'Accept-Language': "en-US,en;q=0.5",
+        'X-Requested-With': "XMLHttpRequest",
+        'Cache-Control': "no-cache"
+    }
+    response = requests.request("GET", url, headers=headers, params=querystring)
+    if response.status_code != 200:
+        raise ServiceError('HTTP {}'.format(response.status_code))
+    data = response.text
+    payload = json.loads(data, encoding='utf-8')
+    return payload
 
 
 if __name__ == "__main__":
