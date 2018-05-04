@@ -142,6 +142,17 @@ class Player(Process):
                 'lat': self.state.lat,
                 'long': self.state.long
             }
+        elif action == PlayerInstruction.DESTINATION:
+            self.logger.debug('getting destination of this player')
+            if self.state.status == Status.EN_ROUTE:
+                lat, long = self.state.plan[-1]['lat']['end'], self.state.plan[-1]['long']['end']
+            else:
+                lat, long = self.state.lat, self.state.long
+
+            response['player'] = {
+                'lat': lat,
+                'long': long
+            }
 
         return response
 
@@ -271,6 +282,9 @@ class PlayerState:
         self.completion_time = self.now() + len(plan)
 
     def assess_accident(self):
+        assert self.lat == self.plan[-1]['lat']['end']
+        assert self.long == self.plan[-1]['long']['end']
+
         self.status = Status.ASSESSING
         self.status_since = self.now()
         self.plan = None
@@ -293,8 +307,10 @@ class PlayerState:
 
         if time_left <= 0:
             if self.status == Status.EN_ROUTE:
+                self.logger.debug('start accessing accident')
                 self.assess_accident()
             elif self.status == Status.ASSESSING:
+                self.logger.debug('finish accessing accident')
                 self.idle()
         else:
             if self.status == Status.EN_ROUTE:

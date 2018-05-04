@@ -13,7 +13,7 @@ class SimpleKlangValleyDeploymentMaster(DeploymentMaster):
 
     def decide(self, payload):
         player = random.randrange(self.player_count)
-        self.tell(player, PlayerInstruction.GO, payload)
+        self.deploy(player, payload)
 
 
 if __name__ == "__main__":

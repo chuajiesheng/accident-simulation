@@ -21,6 +21,10 @@ class StopConsuming(Exception):
     pass
 
 
+class DeferDecision(Exception):
+    pass
+
+
 def setup_logging(name):
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
@@ -124,6 +128,7 @@ class AccidentPayload:
 class PlayerInstruction(Enum):
     WHERE = 'where'
     GO = 'go'
+    DESTINATION = 'destination'
 
 
 class AccidentDeployment:

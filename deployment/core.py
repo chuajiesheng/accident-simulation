@@ -1,13 +1,15 @@
 import time
 import queue
 import uuid
+from datetime import datetime
 
 import pika
 import json
 import functools
 
 from mq import RabbitMQ
-from base import setup_logging, StoppableThread, deserialize_message, AccidentPayload, AccidentDeployment, RpcCall
+from base import setup_logging, StoppableThread, deserialize_message, AccidentPayload, AccidentDeployment, RpcCall, \
+    PlayerInstruction, DeferDecision
 
 
 class DeploymentMaster:
@@ -98,11 +100,21 @@ class DeploymentMaster:
     def decide(self, payload):
         raise NotImplemented
 
-    def tell(self, player, action, payload):
-        player_queue = '{}.player{}'.format(self.team_uuid, player)
-        self.logger.debug('telling player%s to %r to %r', player, action, payload.to_dict())
-
+    def deploy(self, player, payload):
+        action = PlayerInstruction.GO
         deployment_decision = AccidentDeployment(action, payload).to_dict()
+        return self._rpc(player, deployment_decision)
+
+    def ask(self, player, action):
+        payload = {
+            'action': action.value,
+            'utc_decision_time': datetime.utcnow().timestamp(),
+        }
+        return self._rpc(player, payload)
+
+    def _rpc(self, player, dict_payload):
+        player_queue = '{}.player{}'.format(self.team_uuid, player)
+        self.logger.debug('rpc-ing player%s %r', player, dict_payload)
 
         with RabbitMQ.setup_connection() as connection, connection.channel() as channel:
             result = channel.queue_declare(exclusive=True)
@@ -117,13 +129,15 @@ class DeploymentMaster:
                                   routing_key=player_queue,
                                   properties=pika.BasicProperties(reply_to=callback_queue,
                                                                   correlation_id=corr_id),
-                                  body=json.dumps(deployment_decision))
+                                  body=json.dumps(dict_payload))
 
             self.logger.debug('waiting to process event')
             while not rpc.completed():
                 connection.process_data_events()
 
             self.logger.debug('error=%s, response=%r', rpc.error, rpc.body)
+
+        return rpc
 
 
 class AccidentEventConsumer(StoppableThread):
