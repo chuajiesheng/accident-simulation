@@ -79,13 +79,12 @@ class DeploymentMaster:
                 self.logger.debug('deployment manager status=%s', self.accident_event_consumer.is_alive())
                 self.logger.debug('empty_queue=%s', self.message_queue.empty())
                 try:
-                    timestamp, accident_payload = self.message_queue.get(block=False)
-                    self.logger.debug("priority=%r, message=%r", timestamp, accident_payload.to_dict())
+                    accident_payload = self.message_queue.get(block=False)
+                    self.logger.debug("message=%r", accident_payload.to_dict())
                     self.decide(accident_payload)
                 except DeferDecision:
-                    self.logger.debug('requeue=%r', timestamp)
-                    assert type(timestamp) == float
-                    self.message_queue.put((timestamp, accident_payload))
+                    self.logger.debug('requeue=%r', accident_payload.utc_timestamp)
+                    self.message_queue.put(accident_payload)
                 except queue.Empty:
                     continue
 
@@ -172,7 +171,7 @@ class AccidentEventConsumer(StoppableThread):
         accident_payload = AccidentPayload.from_dict(deserialize_message(body))
         priority = accident_payload.utc_timestamp
         assert type(priority) == float
-        self.message_queue.put((priority, accident_payload))
+        self.message_queue.put(accident_payload)
 
         if self.stopped():
             channel.stop_consuming()
