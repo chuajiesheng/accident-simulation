@@ -1,4 +1,5 @@
 import signal
+import traceback
 from datetime import datetime
 from enum import Enum
 import queue
@@ -133,26 +134,28 @@ class Player(Process):
         self.logger.debug('handling message=%r', message)
 
         action = PlayerInstruction(message['action'])
-        response = {'state': 'ok'}
+        response = {
+            'state': 'ok',
+            'player_id': self.player_id
+        }
 
         if action == PlayerInstruction.GO:
             self.queue_destination(AccidentDeployment.from_dict(message))
-        elif action == PlayerInstruction.WHERE:
-            response['player'] = {
-                'lat': self.state.lat,
-                'long': self.state.long
-            }
-        elif action == PlayerInstruction.DESTINATION:
-            self.logger.debug('getting destination of this player')
-            if self.state.status == Status.EN_ROUTE:
-                lat, long = self.state.plan[-1]['lat']['end'], self.state.plan[-1]['long']['end']
-            else:
-                lat, long = self.state.lat, self.state.long
+        elif action == PlayerInstruction.STATUS:
+            self.logger.debug('checking status of player')
 
-            response['player'] = {
-                'lat': lat,
-                'long': long
-            }
+            current_location = {'lat': self.state.lat, 'long': self.state.long}
+            response['status'] = self.state.status.value
+            response['current_location'] = current_location
+
+            is_en_route = self.state.status == Status.EN_ROUTE
+            if not is_en_route:
+                response['destination'] = current_location
+            else:
+                response['destination'] = {
+                    'lat': self.state.plan[-1]['lat']['end'],
+                    'long': self.state.plan[-1]['long']['end']
+                }
 
         return response
 
@@ -213,6 +216,7 @@ class Player(Process):
                 self.logger.debug('StopConsuming')
             except:
                 self.logger.debug("unexpected error=%s", sys.exc_info()[0])
+                self.logger.error(traceback.format_exc())
             finally:
                 channel.stop_consuming()
                 self.logger.debug('deleting queue')

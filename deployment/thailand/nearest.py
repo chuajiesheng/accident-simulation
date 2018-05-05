@@ -1,7 +1,8 @@
 import random
 
-from base import setup_logging, Boundary, PlayerInstruction, deserialize_message
+from base import setup_logging, Boundary, PlayerInstruction, deserialize_message, DeferDecision
 from deployment.core import DeploymentMaster
+from gamemaster.core import Status
 from gamemaster.vehicle import ask_osrm
 
 
@@ -13,15 +14,25 @@ class NearestAssessorBangkokDeploymentMaster(DeploymentMaster):
         self.boundary = Boundary(13.381014, 100.950397, 14.284958, 99.869143)
 
     def decide(self, payload):
-        time_to_dest = dict()
-        for i in range(self.player_count):
-            rpc = self.ask(i, PlayerInstruction.DESTINATION)
-            player_dest = deserialize_message(rpc.body)['player']
-            time_to_dest[i] = ask_osrm(player_dest, payload.location.to_dict())['routes'][0]['duration']
+        def get_status(index):
+            rpc = self.ask(index, PlayerInstruction.STATUS)
+            return deserialize_message(rpc.body)
 
-        self.logger.debug('decide using=%r', time_to_dest)
-        player = min(time_to_dest, key=time_to_dest.get)
-        self.deploy(player, payload)
+        def is_unavailable(player):
+            self.logger.debug('checking player=%r', player)
+            status = Status(player['status'])
+            return status is not Status.EN_ROUTE or status is not Status.ASSESSING
+
+        player_statuses = map(get_status, range(self.player_count))
+        possible_player = list(filter(is_unavailable, player_statuses))
+        if len(possible_player) <= 0:
+            raise DeferDecision
+
+        dest = payload.location.to_dict()
+        osrm_timing = dict(map(lambda p: (ask_osrm(p['destination'], dest)['routes'][0]['duration'], p), possible_player))
+        self.logger.debug('decide using=%r', osrm_timing)
+        player = osrm_timing[min(osrm_timing)]
+        self.deploy(player['player_id'], payload)
 
 
 if __name__ == "__main__":

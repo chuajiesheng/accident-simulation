@@ -134,9 +134,8 @@ class AccidentPayload:
 
 
 class PlayerInstruction(Enum):
-    WHERE = 'where'
     GO = 'go'
-    DESTINATION = 'destination'
+    STATUS = 'status'
 
 
 class AccidentDeployment:
