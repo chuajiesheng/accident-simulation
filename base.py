@@ -3,6 +3,7 @@ import threading
 import json
 from datetime import datetime
 from enum import Enum
+from functools import total_ordering
 
 
 class ServiceError(Exception):
@@ -102,6 +103,7 @@ class Boundary:
         }
 
 
+@total_ordering
 class AccidentPayload:
     @staticmethod
     def from_dict(o):
@@ -123,6 +125,12 @@ class AccidentPayload:
             'boundary': self.boundary.to_dict(),
             'accident': self.location.to_dict()
         }
+
+    def __eq__(self, other):
+        return self.utc_timestamp == other.utc_timestamp
+
+    def __lt__(self, other):
+        return self.utc_timestamp < other.utc_timestamp
 
 
 class PlayerInstruction(Enum):
