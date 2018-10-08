@@ -1,5 +1,3 @@
-import random
-
 from base import setup_logging, Boundary, PlayerInstruction, deserialize_message, DeferDecision
 from deployment.core import DeploymentMaster
 from gamemaster.core import Status

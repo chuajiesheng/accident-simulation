@@ -172,6 +172,7 @@ class Player(Process):
         while True:
             self.logger.debug('heartbeat')
 
+            # something here is not working
             if self.state.is_idle() and not self.job_queue.empty():
                 job = self.job_queue.get()
                 self.logger.debug('job=%r', job.to_dict())

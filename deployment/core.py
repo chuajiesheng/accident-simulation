@@ -38,32 +38,13 @@ class DeploymentMaster:
 
         self.logger.debug('initiated')
 
-    def game_master_rpc(self, payload):
-        with RabbitMQ.setup_connection() as connection, connection.channel() as channel:
-            result = channel.queue_declare(exclusive=True)
-            callback_queue = result.method.queue
-
-            corr_id = str(uuid.uuid4())
-            rpc = RpcCall(corr_id)
-
-            connection.add_timeout(self.PLAYER_RPC_TIMEOUT_SECS, functools.partial(self._on_timeout, rpc, self.logger))
-            channel.basic_consume(functools.partial(self._on_response, rpc, self.logger), no_ack=True, queue=callback_queue)
-            channel.basic_publish(exchange='',
-                                  routing_key=RabbitMQ.game_master_queue_name(),
-                                  properties=pika.BasicProperties(reply_to=callback_queue,
-                                                                  correlation_id=corr_id),
-                                  body=json.dumps(payload))
-
-            self.logger.debug('waiting to process event')
-            while not rpc.completed():
-                connection.process_data_events()
-
-            self.logger.debug('error=%s, response=%r', rpc.error, rpc.body)
-            return rpc.body
+    def _rpc_game_master(self, payload):
+        queue_name = RabbitMQ.game_master_queue_name()
+        return self._rpc(queue_name, payload)
 
     def start(self):
         self.logger.debug('request team')
-        self.game_master_rpc({
+        self._rpc_game_master({
             'type': 'request',
             'team_uuid': self.team_uuid,
             'player_count': self.player_count,
@@ -92,7 +73,7 @@ class DeploymentMaster:
             self.logger.debug('KeyboardInterrupt')
         finally:
             self.logger.debug('stopping player processes')
-            self.game_master_rpc({
+            self._rpc_game_master({
                 'type': 'terminate',
                 'team_uuid': self.team_uuid,
             })
@@ -106,35 +87,38 @@ class DeploymentMaster:
     def deploy(self, player, payload):
         action = PlayerInstruction.GO
         deployment_decision = AccidentDeployment(action, payload).to_dict()
-        return self._rpc(player, deployment_decision)
+        return self._rpc_player(player, deployment_decision)
 
     def ask(self, player, action):
         payload = {
             'action': action.value,
             'utc_decision_time': datetime.utcnow().timestamp(),
         }
-        return self._rpc(player, payload)
+        return self._rpc_player(player, payload)
 
-    def _rpc(self, player, dict_payload):
+    def _rpc_player(self, player, payload):
         player_queue = '{}.player{}'.format(self.team_uuid, player)
-        self.logger.debug('rpc-ing player%s %r', player, dict_payload)
+        return self._rpc(player_queue, payload)
+
+    def _rpc(self, queue_name, payload):
+        self.logger.debug('rpc-ing queue=%s payload=%r', queue_name, payload)
+
+        corr_id = str(uuid.uuid4())
+        rpc = RpcCall(corr_id)
 
         with RabbitMQ.setup_connection() as connection, connection.channel() as channel:
             result = channel.queue_declare(exclusive=True)
             callback_queue = result.method.queue
 
-            corr_id = str(uuid.uuid4())
-            rpc = RpcCall(corr_id)
-
             connection.add_timeout(self.PLAYER_RPC_TIMEOUT_SECS, functools.partial(self._on_timeout, rpc, self.logger))
             channel.basic_consume(functools.partial(self._on_response, rpc, self.logger), no_ack=True, queue=callback_queue)
             channel.basic_publish(exchange='',
-                                  routing_key=player_queue,
+                                  routing_key=queue_name,
                                   properties=pika.BasicProperties(reply_to=callback_queue,
                                                                   correlation_id=corr_id),
-                                  body=json.dumps(dict_payload))
+                                  body=json.dumps(payload))
 
-            self.logger.debug('waiting to process event')
+            self.logger.debug('waiting for remote to process event')
             while not rpc.completed():
                 connection.process_data_events()
 
